@@ -18,6 +18,9 @@ public sealed record AppSettings
     public string ScreenshotHotkey { get; init; } = "F3";
     public int FramesPerSecond { get; init; } = 60;
     public SavedRegion? LastRegion { get; init; }
+
+    /// <summary>The user's own sizes for the size menu, in the order they were added.</summary>
+    public IReadOnlyList<CustomSize> CustomSizes { get; init; } = [];
 }
 
 public static class SettingsStore
@@ -85,6 +88,19 @@ public static class SettingsStore
             RecordHotkey = string.IsNullOrWhiteSpace(s.RecordHotkey) ? defaults.RecordHotkey : s.RecordHotkey,
             ScreenshotHotkey = string.IsNullOrWhiteSpace(s.ScreenshotHotkey) ? defaults.ScreenshotHotkey : s.ScreenshotHotkey,
             FramesPerSecond = s.FramesPerSecond is 30 or 60 ? s.FramesPerSecond : defaults.FramesPerSecond,
+            CustomSizes = ValidCustomSizes(s.CustomSizes),
         };
+    }
+
+    /// <summary>Drops entries a hand edit broke and keeps the first MaxCount. No entries gives the shared empty list.</summary>
+    private static IReadOnlyList<CustomSize> ValidCustomSizes(IReadOnlyList<CustomSize?>? sizes)
+    {
+        var valid = (sizes ?? [])
+            .OfType<CustomSize>()
+            .Select(c => c with { Label = (c.Label ?? "").Trim() })
+            .Where(c => c.IsValid)
+            .Take(CustomSize.MaxCount)
+            .ToArray();
+        return valid.Length == 0 ? [] : valid;
     }
 }

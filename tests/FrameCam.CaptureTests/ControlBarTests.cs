@@ -277,6 +277,111 @@ public class ControlBarTests
         }
     });
 
+    private const string ManageSizes = "新增或刪除自訂尺寸…";
+
+    [Fact]
+    public void Size_menu_lists_saved_custom_sizes_under_the_presets() => Sta.Run(async () =>
+    {
+        var bar = new ControlBarForm(NewSettingsFile(new CustomSize("直播", 1600, 900), new CustomSize("", 800, 600)));
+        try
+        {
+            bar.Show();
+            await Task.Delay(300);
+            using var menu = bar.BuildSizeMenu();
+            Assert.Equal(
+                ["1920 × 1080", "1280 × 720", "854 × 480", "640 × 360", "整個螢幕", "", "自訂尺寸", "直播（1600 × 900）", "800 × 600", "", ManageSizes],
+                menu.Items.Cast<ToolStripItem>().Select(i => i.Text ?? ""));
+        }
+        finally
+        {
+            bar.Close();
+        }
+    });
+
+    [Fact]
+    public void Size_menu_without_custom_sizes_offers_to_add_one() => Sta.Run(async () =>
+    {
+        var bar = new ControlBarForm(NewSettingsFile());
+        try
+        {
+            bar.Show();
+            await Task.Delay(300);
+            using var menu = bar.BuildSizeMenu();
+            Assert.Equal(["整個螢幕", "", ManageSizes], menu.Items.Cast<ToolStripItem>().Skip(4).Select(i => i.Text ?? ""));
+        }
+        finally
+        {
+            bar.Close();
+        }
+    });
+
+    [Fact]
+    public void Picking_a_custom_size_gives_the_region_that_size() => Sta.Run(async () =>
+    {
+        var bar = new ControlBarForm(NewSettingsFile(new CustomSize("", 800, 600)));
+        try
+        {
+            bar.Show();
+            await Task.Delay(300);
+            using var menu = bar.BuildSizeMenu();
+            menu.Items.Cast<ToolStripItem>().Single(i => i.Text == "800 × 600").PerformClick();
+
+            Assert.Equal(new PixelSize(800, 600), new PixelSize(bar.Frame.CaptureRegion.Width, bar.Frame.CaptureRegion.Height));
+        }
+        finally
+        {
+            bar.Close();
+        }
+    });
+
+    [Fact]
+    public void Custom_size_larger_than_the_screen_cannot_be_picked() => Sta.Run(async () =>
+    {
+        var bar = new ControlBarForm(NewSettingsFile(new CustomSize("太大", 8000, 4000)));
+        try
+        {
+            bar.Show();
+            await Task.Delay(300);
+            using var menu = bar.BuildSizeMenu();
+            Assert.False(menu.Items.Cast<ToolStripItem>().Single(i => i.Text == "太大（8000 × 4000）").Enabled);
+        }
+        finally
+        {
+            bar.Close();
+        }
+    });
+
+    [Fact]
+    public void Sizes_added_in_the_dialog_are_saved_and_listed() => Sta.Run(async () =>
+    {
+        string path = NewSettingsFile();
+        var bar = new ControlBarForm(path);
+        try
+        {
+            bar.Show();
+            await Task.Delay(300);
+            SynchronizationContext.Current!.Post(async _ =>
+            {
+                await Task.Delay(200);
+                var dialog = Application.OpenForms.OfType<CustomSizesForm>().Single();
+                All<TextBox>(dialog).Single(b => b.AccessibleName == "標籤").Text = "直播";
+                All<TextBox>(dialog).Single(b => b.AccessibleName == "寬").Text = "1600";
+                All<TextBox>(dialog).Single(b => b.AccessibleName == "高").Text = "900";
+                All<Button>(dialog).Single(b => b.Text == "新增").PerformClick();
+                dialog.Close();
+            }, null);
+            bar.OpenCustomSizes(); // returns when the posted callback has closed the dialog
+
+            Assert.Equal([new CustomSize("直播", 1600, 900)], SettingsStore.Load(path).Settings.CustomSizes);
+            using var menu = bar.BuildSizeMenu();
+            Assert.Contains(menu.Items.Cast<ToolStripItem>(), i => i.Text == "直播（1600 × 900）");
+        }
+        finally
+        {
+            bar.Close();
+        }
+    });
+
     private static Point Center(RectangleF r) => new((int)(r.Left + r.Width / 2), (int)(r.Top + r.Height / 2));
 
     private static bool CanRegister(Keys keys)
@@ -285,7 +390,7 @@ public class ControlBarTests
         return probe.Register(keys, () => { });
     }
 
-    private static string NewSettingsFile()
+    private static string NewSettingsFile(params CustomSize[] customSizes)
     {
         string folder = Directory.CreateTempSubdirectory("framecam 測試 bar ").FullName;
         string path = Path.Combine(folder, "settings.json");
@@ -294,6 +399,7 @@ public class ControlBarTests
             OutputFolder = folder,
             RecordHotkey = HotkeyText.Format(RecordKey),
             ScreenshotHotkey = HotkeyText.Format(Keys.Control | Keys.Alt | Keys.Shift | Keys.F12),
+            CustomSizes = customSizes,
         });
         return path;
     }

@@ -32,6 +32,45 @@ public class SettingsStoreTests
         Assert.Equal("F3", settings.ScreenshotHotkey);
         Assert.Equal(60, settings.FramesPerSecond);
         Assert.Null(settings.LastRegion);
+        Assert.Empty(settings.CustomSizes);
+    }
+
+    [Fact]
+    public void Custom_sizes_load_back_in_order()
+    {
+        string path = NewPath();
+        CustomSize[] sizes = [new("直播", 1600, 900), new("", 800, 600)];
+        SettingsStore.Save(path, new AppSettings { CustomSizes = sizes });
+        var (loaded, error) = SettingsStore.Load(path);
+        Assert.Null(error);
+        Assert.Equal(sizes, loaded.CustomSizes);
+    }
+
+    [Fact]
+    public void Invalid_custom_sizes_from_a_hand_edit_are_dropped()
+    {
+        var (settings, error) = SettingsStore.Load(WriteFile(
+            """
+            { "CustomSizes": [
+                { "Label": "ok", "Width": 800, "Height": 600 },
+                { "Label": "odd", "Width": 801, "Height": 600 },
+                { "Label": null, "Width": 640, "Height": 480 },
+                null,
+                { "Label": "tiny", "Width": 2, "Height": 2 }
+            ] }
+            """));
+        Assert.Null(error);
+        Assert.Equal([new CustomSize("ok", 800, 600), new CustomSize("", 640, 480)], settings.CustomSizes);
+    }
+
+    [Fact]
+    public void At_most_20_custom_sizes_are_kept()
+    {
+        string path = NewPath();
+        var sizes = Enumerable.Range(1, 25).Select(i => new CustomSize($"s{i}", 100 + 2 * i, 100)).ToArray();
+        SettingsStore.Save(path, new AppSettings { CustomSizes = sizes });
+        var (loaded, _) = SettingsStore.Load(path);
+        Assert.Equal(sizes.Take(20), loaded.CustomSizes);
     }
 
     [Fact]

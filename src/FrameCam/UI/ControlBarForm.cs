@@ -241,21 +241,55 @@ internal sealed class ControlBarForm : PillBarWindow
 
     private void ShowSizeMenu()
     {
+        var menu = BuildSizeMenu();
+        menu.Closed += (_, _) => BeginInvoke(menu.Dispose); // after the item's Click has run
+        menu.Show(this, BelowItem(BarItem.Size));
+    }
+
+    /// <summary>
+    /// The presets, the whole monitor, then the saved custom sizes and the command that edits them. A size
+    /// larger than the monitor is greyed out.
+    /// </summary>
+    internal ContextMenuStrip BuildSizeMenu()
+    {
         var menu = new ContextMenuStrip();
         var monitor = _frame.Monitor;
-        foreach (var size in FrameAdjust.Presets)
+        ToolStripMenuItem SizeItem(string text, PixelSize size)
         {
             var target = FrameAdjust.ApplyPreset(_frame.CaptureRegion, size, monitor.Bounds);
-            var item = new ToolStripMenuItem($"{size.Width} × {size.Height}") { Enabled = target is not null };
+            var item = new ToolStripMenuItem(text) { Enabled = target is not null };
             if (target is { } region)
                 item.Click += (_, _) => _frame.SetRegion(region, monitor);
-            menu.Items.Add(item);
+            return item;
         }
+
+        foreach (var size in FrameAdjust.Presets)
+            menu.Items.Add(SizeItem($"{size.Width} × {size.Height}", size));
         var full = new ToolStripMenuItem("整個螢幕");
         full.Click += (_, _) => _frame.SetRegion(FrameAdjust.FullMonitor(monitor.Bounds), monitor);
         menu.Items.Add(full);
-        menu.Closed += (_, _) => BeginInvoke(menu.Dispose); // after the item's Click has run
-        menu.Show(this, BelowItem(BarItem.Size));
+        menu.Items.Add(new ToolStripSeparator());
+        if (_settings.CustomSizes.Count > 0)
+        {
+            menu.Items.Add(new ToolStripLabel("自訂尺寸") { ForeColor = Palette.Muted });
+            foreach (var custom in _settings.CustomSizes)
+                menu.Items.Add(SizeItem(custom.MenuText, custom.Size));
+            menu.Items.Add(new ToolStripSeparator());
+        }
+        var manage = new ToolStripMenuItem("新增或刪除自訂尺寸…");
+        manage.Click += (_, _) => BeginInvoke(OpenCustomSizes); // once the menu has closed
+        menu.Items.Add(manage);
+        return menu;
+    }
+
+    /// <summary>Opens the custom sizes dialog and saves what it ends with, however it is closed.</summary>
+    internal void OpenCustomSizes()
+    {
+        var region = _frame.CaptureRegion;
+        using var dialog = new CustomSizesForm(_settings.CustomSizes, new PixelSize(region.Width, region.Height));
+        dialog.ShowDialog(this);
+        _settings = _settings with { CustomSizes = dialog.Sizes };
+        SaveSettings();
     }
 
     private void PickWindow()

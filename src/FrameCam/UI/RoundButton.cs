@@ -70,7 +70,7 @@ internal sealed class RoundButton : Button
         g.SmoothingMode = SmoothingMode.AntiAlias;
         g.PixelOffsetMode = PixelOffsetMode.Half;
         var box = new RectangleF(0, 0, Width, Height);
-        using (var back = new SolidBrush(_down ? _downFill : _hover ? _hoverFill : _fill))
+        using (var back = new SolidBrush(!Enabled ? _fill : _down ? _downFill : _hover ? _hoverFill : _fill))
         using (var shape = Shapes.Rounded(box, Height / 2f))
             g.FillPath(back, shape);
         if (Focused && ShowFocusCues)
@@ -79,14 +79,15 @@ internal sealed class RoundButton : Button
             using var outline = Shapes.Rounded(RectangleF.Inflate(box, -1, -1), Height / 2f - 1);
             g.DrawPath(ring, outline);
         }
+        var ink = Enabled ? _ink : Palette.Dots; // a button that cannot be pressed now is drawn faded
         if (Glyph is { } glyph)
         {
             float size = LogicalToDeviceUnits(GlyphSize);
-            Glyphs.Draw(g, glyph, new RectangleF((Width - size) / 2, (Height - size) / 2, size, size), _ink);
+            Glyphs.Draw(g, glyph, new RectangleF((Width - size) / 2, (Height - size) / 2, size, size), ink);
         }
         else
         {
-            TextRenderer.DrawText(g, Text, Font, ClientRectangle, _ink,
+            TextRenderer.DrawText(g, Text, Font, ClientRectangle, ink,
                 TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter | TextFormatFlags.SingleLine | TextFormatFlags.NoPadding);
         }
     }
