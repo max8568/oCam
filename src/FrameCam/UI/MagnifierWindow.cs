@@ -29,7 +29,6 @@ internal sealed class MagnifierWindow : Form
         _frame = frame;
         FormBorderStyle = FormBorderStyle.None;
         ShowInTaskbar = false;
-        TopMost = true;
         StartPosition = FormStartPosition.Manual;
         AutoScaleMode = AutoScaleMode.None;
         DoubleBuffered = true;
@@ -54,7 +53,9 @@ internal sealed class MagnifierWindow : Form
         get
         {
             var cp = base.CreateParams;
-            cp.ExStyle |= ClickThrough.ExStyle;
+            // Always on top through the style: the TopMost property would make Show() focus this window,
+            // so the next arrow press would no longer reach the bar or the frame.
+            cp.ExStyle |= ClickThrough.ExStyle | NativeMethods.WS_EX_TOPMOST;
             return cp;
         }
     }

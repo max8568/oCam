@@ -198,7 +198,7 @@ public class ControlBarTests
     });
 
     [Fact]
-    public void Showing_the_status_bubble_leaves_the_bar_active() => Sta.Run(async () =>
+    public void Showing_the_status_bubble_does_not_take_the_keyboard() => Sta.Run(async () =>
     {
         var bar = new ControlBarForm(NewSettingsFile());
         HotkeyManager? taken = null;
@@ -216,11 +216,35 @@ public class ControlBarTests
             await Task.Delay(300);
 
             Assert.True(bar.StatusBubble.Visible);
-            Assert.Same(bar, Form.ActiveForm); // so the arrow keys still reach it
+            // It must not take the keyboard from the bar. (Whether the bar is active depends on what else is in
+            // front, for example while someone uses the computer during the test.)
+            Assert.NotSame(bar.StatusBubble, Form.ActiveForm);
         }
         finally
         {
             taken?.Dispose();
+            bar.Close();
+        }
+    });
+
+    [Fact]
+    public void Showing_the_magnifier_does_not_take_the_keyboard() => Sta.Run(async () =>
+    {
+        var bar = new ControlBarForm(NewSettingsFile());
+        try
+        {
+            bar.Show();
+            await Task.Delay(300);
+
+            bar.Frame.TryHandleArrow(Keys.Right); // what an arrow press does; it shows the magnifier
+            await Task.Delay(100);
+
+            var magnifier = Application.OpenForms.OfType<MagnifierWindow>().Single(); // listed once it has been shown
+            Assert.True(magnifier.Visible);
+            Assert.NotSame(magnifier, Form.ActiveForm); // so the next arrow press still reaches the bar or the frame
+        }
+        finally
+        {
             bar.Close();
         }
     });
