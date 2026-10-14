@@ -26,6 +26,19 @@ internal static class WindowEnumerator
     public static SnapTargets SnapTargetsFor(PixelRect monitor) =>
         SnapTargets.FromRects(VisibleWindows().SelectMany(w => new[] { w.Outer, w.Client }), monitor);
 
+    /// <summary>Bounds of the window's visible child windows at any depth, such as a browser's page area.</summary>
+    public static List<PixelRect> ChildRects(IntPtr hwnd)
+    {
+        var result = new List<PixelRect>();
+        NativeMethods.EnumChildWindows(hwnd, (child, _) =>
+        {
+            if (NativeMethods.IsWindowVisible(child) && NativeMethods.GetWindowRect(child, out var r))
+                result.Add(PixelRect.FromEdges(r.Left, r.Top, r.Right, r.Bottom));
+            return true;
+        }, IntPtr.Zero);
+        return result;
+    }
+
     private static WindowInfo? TryDescribe(IntPtr hwnd, uint ownProcess)
     {
         if (!NativeMethods.IsWindowVisible(hwnd) || NativeMethods.IsIconic(hwnd))
