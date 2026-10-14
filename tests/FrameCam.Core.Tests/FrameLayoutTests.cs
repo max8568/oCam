@@ -18,6 +18,34 @@ public class FrameLayoutTests
         Assert.False(Layout.Label.IntersectsWith(Layout.Handles.Single(h => h.Handle == Handle.TopLeft).Rect));
 
     [Fact]
+    public void Label_on_a_narrow_region_goes_above_the_handles()
+    {
+        // The label (80 wide) would reach the top-middle handle at x 156..164.
+        var narrow = new FrameLayout(new PixelRect(100, 100, 120, 100), LabelSize, Monitor);
+        Assert.Equal(new PixelRect(100, 71, 80, 20), narrow.Label);
+    }
+
+    [Fact]
+    public void Label_on_a_narrow_region_near_the_top_goes_inside()
+    {
+        var narrow = new FrameLayout(new PixelRect(100, 25, 120, 100), LabelSize, Monitor);
+        Assert.Equal(new PixelRect(100, 25, 80, 20), narrow.Label);
+    }
+
+    [Theory]
+    [InlineData(32, 100)]
+    [InlineData(96, 100)]
+    [InlineData(120, 100)]
+    [InlineData(160, 100)]
+    [InlineData(200, 100)]
+    [InlineData(120, 25)]
+    public void Label_never_covers_a_handle(int width, int top)
+    {
+        var layout = new FrameLayout(new PixelRect(100, top, width, 100), LabelSize, Monitor);
+        Assert.All(layout.Handles, h => Assert.False(layout.Label.IntersectsWith(h.Rect), $"covers {h.Handle}"));
+    }
+
+    [Fact]
     public void Label_moves_inside_the_region_when_there_is_no_room_above()
     {
         var layout = new FrameLayout(new PixelRect(100, 10, 200, 100), LabelSize, Monitor);

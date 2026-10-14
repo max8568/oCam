@@ -3,8 +3,9 @@ namespace FrameCam.Core;
 /// <summary>
 /// Where the frame window's parts go for a region, in screen pixels (spec 7.1): a 2-pixel border ring just
 /// outside the region, 9×9 handles outside its corners and edge midpoints, the size label above the
-/// top-left corner (from the region's left edge, clear of the corner handle), or inside the region's
-/// top-left when there is no room above on the monitor, and a
+/// top-left corner (from the region's left edge, clear of the corner handle; above the handles when the
+/// region is so narrow that it would cover the top-middle one), or inside the region's top-left when there
+/// is no room above on the monitor, and a
 /// 28×28 mover in the middle of regions at least 96 pixels wide and high. The label and the mover move the frame.
 /// </summary>
 public sealed class FrameLayout
@@ -19,7 +20,14 @@ public sealed class FrameLayout
     {
         Region = region;
 
+        const int h = HandleSize;
+        int midX = region.Left + region.Width / 2 - h / 2;
+        int midY = region.Top + region.Height / 2 - h / 2;
+        var topHandle = new PixelRect(midX, region.Top - h, h, h);
+
         int labelTop = region.Top - BorderWidth - labelSize.Height;
+        if (new PixelRect(region.Left, labelTop, labelSize.Width, labelSize.Height).IntersectsWith(topHandle))
+            labelTop = region.Top - h - labelSize.Height;
         Label = labelTop >= monitor.Top
             ? new PixelRect(region.Left, labelTop, labelSize.Width, labelSize.Height)
             : new PixelRect(region.Left, region.Top, labelSize.Width, labelSize.Height);
@@ -33,13 +41,10 @@ public sealed class FrameLayout
             PixelRect.FromEdges(region.Right, region.Top, outer.Right, region.Bottom),
         ];
 
-        const int h = HandleSize;
-        int midX = region.Left + region.Width / 2 - h / 2;
-        int midY = region.Top + region.Height / 2 - h / 2;
         Handles =
         [
             (Handle.TopLeft, new PixelRect(region.Left - h, region.Top - h, h, h)),
-            (Handle.Top, new PixelRect(midX, region.Top - h, h, h)),
+            (Handle.Top, topHandle),
             (Handle.TopRight, new PixelRect(region.Right, region.Top - h, h, h)),
             (Handle.Right, new PixelRect(region.Right, midY, h, h)),
             (Handle.BottomRight, new PixelRect(region.Right, region.Bottom, h, h)),
