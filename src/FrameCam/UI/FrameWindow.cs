@@ -16,8 +16,9 @@ internal sealed class AdjustingEventArgs(PixelPoint focus, PixelPoint anchor) : 
 
 /// <summary>
 /// The recording frame on screen (spec 7.1). The window's shape is only the border ring, the 8 handles and
-/// the size label, all outside the region, so the region's pixels stay visible and clickable. The window is
-/// left out of every screen capture.
+/// the size label, all outside the region, and the mover in the middle of the region, so the rest of the
+/// region's pixels stay visible and clickable. While recording the mover is gone. The window is left out of
+/// every screen capture.
 /// </summary>
 internal sealed class FrameWindow : Form
 {
@@ -84,7 +85,7 @@ internal sealed class FrameWindow : Form
             Capture = false;
             BackColor = value ? RecordingColor : IdleColor;
             Cursor = Cursors.Default;
-            Invalidate();
+            ApplyLayout(); // the mover goes away while recording, and comes back
         }
     }
 
@@ -214,6 +215,13 @@ internal sealed class FrameWindow : Form
             g.FillRectangle(_locked ? border : Brushes.White, c);
             g.DrawRectangle(outline, c.X, c.Y, c.Width - 1, c.Height - 1);
         }
+        if (ShowsMover(out var mover))
+        {
+            var m = ToClient(mover);
+            g.FillRectangle(Brushes.White, m);
+            g.DrawRectangle(outline, m.X, m.Y, m.Width - 1, m.Height - 1);
+            Glyphs.Draw(g, Glyph.Move, new RectangleF(m.X + 3, m.Y + 3, m.Width - 6, m.Height - 6), color);
+        }
         var label = ToClient(_layout.Label);
         g.FillRectangle(border, label);
         TextRenderer.DrawText(g, LabelText, LabelFont, label, Color.White,
@@ -237,10 +245,18 @@ internal sealed class FrameWindow : Form
         foreach (var (_, r) in _layout.Handles)
             shape.Union(ToClient(r));
         shape.Union(ToClient(_layout.Label));
+        if (ShowsMover(out var mover))
+            shape.Union(ToClient(mover));
         var old = Region;
         Region = shape;
         old?.Dispose();
         Invalidate();
+    }
+
+    private bool ShowsMover(out PixelRect mover)
+    {
+        mover = _layout.Mover ?? default;
+        return !_locked && _layout.Mover is not null;
     }
 
     private Rectangle ToClient(PixelRect r) =>

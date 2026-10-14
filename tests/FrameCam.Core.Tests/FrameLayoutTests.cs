@@ -61,6 +61,39 @@ public class FrameLayoutTests
         Assert.Null(Layout.HitTest(new PixelPoint(x, y)));
 
     [Fact]
+    public void Mover_sits_in_the_middle_of_the_region() =>
+        Assert.Equal(new PixelRect(188, 138, 24, 24), Layout.Mover);
+
+    [Theory]
+    [InlineData(200, 150)] // center
+    [InlineData(188, 138)] // its top-left pixel
+    [InlineData(211, 161)] // its bottom-right pixel
+    public void Pressing_the_mover_moves_the_frame(int x, int y) =>
+        Assert.Equal(Handle.Move, Layout.HitTest(new PixelPoint(x, y)));
+
+    [Theory]
+    [InlineData(187, 150)]
+    [InlineData(212, 150)]
+    [InlineData(200, 137)]
+    [InlineData(200, 162)]
+    public void Points_next_to_the_mover_are_not_on_the_frame(int x, int y) =>
+        Assert.Null(Layout.HitTest(new PixelPoint(x, y)));
+
+    [Theory]
+    [InlineData(200, 94)]
+    [InlineData(94, 200)]
+    public void Region_narrower_or_lower_than_96_has_no_mover(int width, int height)
+    {
+        var layout = new FrameLayout(new PixelRect(100, 100, width, height), LabelSize, Monitor);
+        Assert.Null(layout.Mover);
+        Assert.Null(layout.HitTest(new PixelPoint(100 + width / 2, 100 + height / 2)));
+    }
+
+    [Fact]
+    public void Region_of_96_by_96_has_a_mover() =>
+        Assert.NotNull(new FrameLayout(new PixelRect(100, 100, 96, 96), LabelSize, Monitor).Mover);
+
+    [Fact]
     public void Small_region_splits_each_side_between_its_corners()
     {
         var small = new FrameLayout(new PixelRect(100, 100, 32, 32), LabelSize, Monitor);

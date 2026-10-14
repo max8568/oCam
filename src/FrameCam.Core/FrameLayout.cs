@@ -2,14 +2,17 @@ namespace FrameCam.Core;
 
 /// <summary>
 /// Where the frame window's parts go for a region, in screen pixels (spec 7.1): a 2-pixel border ring just
-/// outside the region, 9×9 handles outside its corners and edge midpoints, and the size label above the
-/// top-left corner, or inside the region's top-left when there is no room above on the monitor.
+/// outside the region, 9×9 handles outside its corners and edge midpoints, the size label above the
+/// top-left corner, or inside the region's top-left when there is no room above on the monitor, and a
+/// 24×24 mover in the middle of regions at least 96 pixels wide and high. The label and the mover move the frame.
 /// </summary>
 public sealed class FrameLayout
 {
     public const int BorderWidth = 2;
     public const int HandleSize = 9;
     public const int CornerReach = 16;
+    public const int MoverSize = 24;
+    public const int MoverMinRegion = 96;
 
     public FrameLayout(PixelRect region, PixelSize labelSize, PixelRect monitor)
     {
@@ -44,6 +47,9 @@ public sealed class FrameLayout
             (Handle.Left, new PixelRect(region.Left - h, midY, h, h)),
         ];
 
+        if (region.Width >= MoverMinRegion && region.Height >= MoverMinRegion)
+            Mover = new PixelRect(region.Left + region.Width / 2 - MoverSize / 2, region.Top + region.Height / 2 - MoverSize / 2, MoverSize, MoverSize);
+
         var aroundHandles = region.Inflate(HandleSize);
         WindowBounds = PixelRect.FromEdges(
             Math.Min(aroundHandles.Left, Label.Left),
@@ -56,12 +62,15 @@ public sealed class FrameLayout
     public PixelRect Label { get; }
     public IReadOnlyList<PixelRect> Ring { get; }
     public IReadOnlyList<(Handle Handle, PixelRect Rect)> Handles { get; }
+
+    /// <summary>The square in the middle of the region that moves the frame; null when the region is too small.</summary>
+    public PixelRect? Mover { get; }
     public PixelRect WindowBounds { get; }
 
     /// <summary>What a press at this screen point grabs, or null when the point is not on the frame.</summary>
     public Handle? HitTest(PixelPoint p)
     {
-        if (Label.Contains(p))
+        if (Label.Contains(p) || Mover?.Contains(p) == true)
             return Handle.Move;
         if (!Ring.Any(r => r.Contains(p)) && !Handles.Any(h => h.Rect.Contains(p)))
             return null;
