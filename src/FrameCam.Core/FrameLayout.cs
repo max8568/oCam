@@ -1,13 +1,13 @@
 namespace FrameCam.Core;
 
 /// <summary>
-/// Where the frame window's parts go for a region, in screen pixels (spec 7.1): a 4-pixel border ring just
+/// Where the frame window's parts go for a region, in screen pixels (spec 7.1): a 2-pixel border ring just
 /// outside the region, 9×9 handles outside its corners and edge midpoints, and the size label above the
 /// top-left corner, or inside the region's top-left when there is no room above on the monitor.
 /// </summary>
 public sealed class FrameLayout
 {
-    public const int BorderWidth = 4;
+    public const int BorderWidth = 2;
     public const int HandleSize = 9;
     public const int CornerReach = 16;
 
