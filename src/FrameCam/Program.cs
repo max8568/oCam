@@ -9,8 +9,10 @@ internal static class Program
     private static void Main()
     {
         ApplicationConfiguration.Initialize();
-        // Temporary harness until Task 11: only the frame. Click the frame, then Alt+F4 to quit.
+        // Temporary harness until Task 11: the frame and its magnifier. Click the frame, then Alt+F4 to quit.
         var (region, monitor) = RegionPlacement.Restore(null, Screens.All());
-        Application.Run(new FrameWindow(region, monitor));
+        var frame = new FrameWindow(region, monitor);
+        using var magnifier = new MagnifierWindow(frame);
+        Application.Run(frame);
     }
 }
