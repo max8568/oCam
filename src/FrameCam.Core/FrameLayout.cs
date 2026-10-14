@@ -3,7 +3,8 @@ namespace FrameCam.Core;
 /// <summary>
 /// Where the frame window's parts go for a region, in screen pixels (spec 7.1): a 2-pixel border ring just
 /// outside the region, 9×9 handles outside its corners and edge midpoints, the size label above the
-/// top-left corner, or inside the region's top-left when there is no room above on the monitor, and a
+/// top-left corner (from the region's left edge, clear of the corner handle), or inside the region's
+/// top-left when there is no room above on the monitor, and a
 /// 28×28 mover in the middle of regions at least 96 pixels wide and high. The label and the mover move the frame.
 /// </summary>
 public sealed class FrameLayout
@@ -20,7 +21,7 @@ public sealed class FrameLayout
 
         int labelTop = region.Top - BorderWidth - labelSize.Height;
         Label = labelTop >= monitor.Top
-            ? new PixelRect(Math.Max(region.Left - BorderWidth, monitor.Left), labelTop, labelSize.Width, labelSize.Height)
+            ? new PixelRect(region.Left, labelTop, labelSize.Width, labelSize.Height)
             : new PixelRect(region.Left, region.Top, labelSize.Width, labelSize.Height);
 
         var outer = region.Inflate(BorderWidth);

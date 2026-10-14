@@ -11,7 +11,11 @@ public class FrameLayoutTests
 
     [Fact]
     public void Label_sits_above_the_top_left_corner() =>
-        Assert.Equal(new PixelRect(98, 78, 80, 20), Layout.Label);
+        Assert.Equal(new PixelRect(100, 78, 80, 20), Layout.Label);
+
+    [Fact]
+    public void Label_does_not_cover_the_top_left_handle() =>
+        Assert.False(Layout.Label.IntersectsWith(Layout.Handles.Single(h => h.Handle == Handle.TopLeft).Rect));
 
     [Fact]
     public void Label_moves_inside_the_region_when_there_is_no_room_above()
