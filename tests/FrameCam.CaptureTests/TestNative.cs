@@ -28,4 +28,28 @@ internal static class TestNative
 
     /// <summary>The top-level window the mouse would reach at this screen point.</summary>
     public static IntPtr TopLevelWindowAt(Point p) => GetAncestor(WindowFromPoint(new POINT(p.X, p.Y)), GA_ROOT);
+
+    private const uint WM_LBUTTONDOWN = 0x0201;
+    private const uint WM_LBUTTONUP = 0x0202;
+    private const int MK_LBUTTON = 0x0001;
+
+    [DllImport("user32.dll")]
+    private static extern IntPtr SendMessage(IntPtr hwnd, uint message, IntPtr wParam, IntPtr lParam);
+
+    /// <summary>A left click at a point of the window's client area, without moving the real mouse.</summary>
+    public static void Click(IntPtr hwnd, Point client)
+    {
+        var position = (IntPtr)((client.Y << 16) | (client.X & 0xFFFF));
+        SendMessage(hwnd, WM_LBUTTONDOWN, MK_LBUTTON, position);
+        SendMessage(hwnd, WM_LBUTTONUP, IntPtr.Zero, position);
+    }
+
+    [DllImport("user32.dll")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool GetWindowDisplayAffinity(IntPtr hwnd, out uint affinity);
+
+    public const uint WDA_EXCLUDEFROMCAPTURE = 0x00000011;
+
+    public static uint DisplayAffinity(IntPtr hwnd) =>
+        GetWindowDisplayAffinity(hwnd, out uint affinity) ? affinity : throw new System.ComponentModel.Win32Exception();
 }

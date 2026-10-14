@@ -15,15 +15,20 @@ internal sealed class HotkeyTextBox : TextBox
         Width = 160;
     }
 
+    /// <summary>Raised when the key combination changes, by the user or in code.</summary>
+    public event EventHandler? HotkeyChanged;
+
     [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
     public Keys Hotkey
     {
         get => _hotkey;
         set
         {
+            if (value == _hotkey)
+                return;
             _hotkey = value;
             Text = HotkeyText.Format(value);
-            BackColor = SystemColors.Window;
+            HotkeyChanged?.Invoke(this, EventArgs.Empty);
         }
     }
 

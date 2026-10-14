@@ -6,6 +6,13 @@ internal static partial class NativeMethods
 {
     public const int DWMWA_EXTENDED_FRAME_BOUNDS = 9;
     public const int DWMWA_CLOAKED = 14;
+    public const int DWMWA_WINDOW_CORNER_PREFERENCE = 33;
+    public const int DWMWA_BORDER_COLOR = 34;
+    public const int DWMWCP_ROUND = 2;
+    public const int WM_NCHITTEST = 0x0084;
+    public const int HTCLIENT = 1;
+    public const int HTCAPTION = 2;
+    public const int CS_DROPSHADOW = 0x00020000;
 
     [StructLayout(LayoutKind.Sequential)]
     public struct RECT
@@ -54,4 +61,7 @@ internal static partial class NativeMethods
 
     [DllImport("dwmapi.dll")]
     public static extern int DwmGetWindowAttribute(IntPtr hwnd, int attribute, out int value, int size);
+
+    [DllImport("dwmapi.dll")]
+    public static extern int DwmSetWindowAttribute(IntPtr hwnd, int attribute, ref int value, int size);
 }

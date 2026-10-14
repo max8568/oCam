@@ -11,7 +11,7 @@ namespace FrameCam.UI;
 /// The control bar (spec 8.4) and main window: owns the frame, magnifier, recorder, hotkeys and settings.
 /// Closing it ends the program, after any recording in progress has been saved.
 /// </summary>
-internal sealed class ControlBarForm : Form
+internal sealed class ControlBarForm : PillBarWindow
 {
     private readonly string _settingsPath;
     private AppSettings _settings;
@@ -19,14 +19,6 @@ internal sealed class ControlBarForm : Form
     private readonly MagnifierWindow _magnifier;
     private readonly IScreenRecorder _recorder = new ScreenRecorderLibRecorder();
     private readonly HotkeyManager _hotkeys = new();
-
-    private readonly Button _recordButton = new() { Text = "● 錄影", AutoSize = true };
-    private readonly Button _screenshotButton = new() { Text = "截圖", AutoSize = true };
-    private readonly Button _sizeButton = new() { Text = "尺寸 ▾", AutoSize = true };
-    private readonly Button _pickButton = new() { Text = "選視窗", AutoSize = true };
-    private readonly Button _folderButton = new() { Text = "資料夾", AutoSize = true };
-    private readonly Button _settingsButton = new() { Text = "設定", AutoSize = true };
-    private readonly Label _status = new() { AutoSize = true, MaximumSize = new Size(440, 0), Margin = new Padding(6, 2, 6, 6) };
 
     private readonly System.Windows.Forms.Timer _elapsedTimer = new() { Interval = 500 };
     private readonly System.Windows.Forms.Timer _flashTimer = new() { Interval = 2000 };
@@ -63,34 +55,10 @@ internal sealed class ControlBarForm : Form
         _flashTimer.Tick += (_, _) =>
         {
             _flashTimer.Stop();
-            _status.Text = _baseStatus;
+            Status = _baseStatus;
         };
 
-        _recordButton.Click += (_, _) => ToggleRecording();
-        _screenshotButton.Click += (_, _) => TakeScreenshot();
-        _sizeButton.Click += (_, _) => ShowSizeMenu();
-        _pickButton.Click += (_, _) => PickWindow();
-        _folderButton.Click += (_, _) => OpenFolder();
-        _settingsButton.Click += (_, _) => OpenSettings();
-
-        SuspendLayout();
-        AutoScaleDimensions = new SizeF(96F, 96F);
-        AutoScaleMode = AutoScaleMode.Dpi;
         Text = "FrameCam";
-        FormBorderStyle = FormBorderStyle.FixedToolWindow;
-        MaximizeBox = false;
-        MinimizeBox = false;
-        TopMost = true;
-        StartPosition = FormStartPosition.Manual;
-        AutoSize = true;
-        AutoSizeMode = AutoSizeMode.GrowAndShrink;
-        var buttons = new FlowLayoutPanel { AutoSize = true, WrapContents = false };
-        buttons.Controls.AddRange(new Control[] { _recordButton, _screenshotButton, _sizeButton, _pickButton, _folderButton, _settingsButton });
-        var layout = new FlowLayoutPanel { AutoSize = true, FlowDirection = FlowDirection.TopDown, WrapContents = false };
-        layout.Controls.AddRange(new Control[] { buttons, _status });
-        Controls.Add(layout);
-        ResumeLayout(false);
-        PerformLayout();
 
         if (settingsError is not null)
             SetStatus(settingsError);
@@ -107,12 +75,37 @@ internal sealed class ControlBarForm : Form
     protected override void OnLoad(EventArgs e)
     {
         base.OnLoad(e);
+        RegisterHotkeys(); // first: it sets the record button's text, and so the bar's width
         var area = Screen.FromRectangle(_frame.Monitor.Bounds.ToRectangle()).WorkingArea;
-        Location = new Point(area.Right - Width - 16, area.Top + 16);
+        Location = new Point(area.Right - 16 - (int)BarLayout.Bar.Right, area.Top + 16 - (int)BarLayout.Bar.Top);
         _frame.Show();
         SystemEvents.DisplaySettingsChanged += OnDisplaySettingsChanged;
-        RegisterHotkeys();
     }
+
+    protected override void OnItemClick(BarItem item)
+    {
+        switch (item)
+        {
+            case BarItem.Record: ToggleRecording(); break;
+            case BarItem.Screenshot: TakeScreenshot(); break;
+            case BarItem.Size: ShowSizeMenu(); break;
+            case BarItem.Pick: PickWindow(); break;
+            case BarItem.Folder: OpenFolder(); break;
+            case BarItem.Settings: OpenSettings(); break;
+            case BarItem.Close: Close(); break;
+        }
+    }
+
+    protected override string TipFor(BarItem item) => item switch
+    {
+        BarItem.Screenshot => _screenshotHotkeyFailed ? "截圖" : $"截圖 ({_settings.ScreenshotHotkey})",
+        BarItem.Size => "常用尺寸",
+        BarItem.Pick => "選視窗",
+        BarItem.Folder => "開啟存檔資料夾",
+        BarItem.Settings => "設定",
+        BarItem.Close => "結束 FrameCam",
+        _ => "",
+    };
 
     protected override bool ProcessCmdKey(ref Message msg, Keys keyData) =>
         _frame.TryHandleArrow(keyData) || base.ProcessCmdKey(ref msg, keyData);
@@ -172,19 +165,21 @@ internal sealed class ControlBarForm : Form
             SetStatus($"無法開始錄影：{ex.Message}");
             return;
         }
-        _recordingNote = hasAudio ? "" : "（找不到播放裝置，只錄畫面）";
+        _recordingNote = hasAudio ? "" : "找不到播放裝置，只錄畫面";
         _stopNote = "";
         _frame.Locked = true;
-        _recordButton.Text = "■ 停止";
-        _sizeButton.Enabled = _pickButton.Enabled = false;
-        SetStatus("準備錄影…" + _recordingNote);
+        SetElapsed("00:00:00");
+        SetRecording(true);
+        SetEnabled(BarItem.Size, false);
+        SetEnabled(BarItem.Pick, false);
+        SetStatus(hasAudio ? "準備錄影…" : $"準備錄影…（{_recordingNote}）");
     }
 
     private void StopRecording(string note)
     {
         _stopping = true;
         _stopNote = note;
-        _recordButton.Enabled = false;
+        SetEnabled(BarItem.Record, false);
         _elapsedTimer.Stop();
         SetStatus(note + "正在存檔…");
         _recorder.Stop();
@@ -197,12 +192,13 @@ internal sealed class ControlBarForm : Form
         _recordingSince = DateTime.Now;
         _elapsedTimer.Start();
         ShowRecordingTime();
+        SetStatus(_recordingNote);
     }
 
     private void ShowRecordingTime()
     {
         if (_recordingSince is { } since)
-            SetStatus($"● 錄影中 {DateTime.Now - since:hh\\:mm\\:ss}{_recordingNote}");
+            SetElapsed($"{DateTime.Now - since:hh\\:mm\\:ss}");
     }
 
     private void OnRecordingEnded(string message)
@@ -211,9 +207,10 @@ internal sealed class ControlBarForm : Form
         _recordingSince = null;
         _stopping = false;
         _frame.Locked = false;
-        _recordButton.Text = "● 錄影";
-        _recordButton.Enabled = true;
-        _sizeButton.Enabled = _pickButton.Enabled = true;
+        SetRecording(false);
+        SetEnabled(BarItem.Record, true);
+        SetEnabled(BarItem.Size, true);
+        SetEnabled(BarItem.Pick, true);
         SetStatus(message);
         if (_closeAfterRecording)
             Close();
@@ -258,7 +255,7 @@ internal sealed class ControlBarForm : Form
         full.Click += (_, _) => _frame.SetRegion(FrameAdjust.FullMonitor(monitor.Bounds), monitor);
         menu.Items.Add(full);
         menu.Closed += (_, _) => BeginInvoke(menu.Dispose); // after the item's Click has run
-        menu.Show(_sizeButton, new Point(0, _sizeButton.Height));
+        menu.Show(this, BelowItem(BarItem.Size));
     }
 
     private void PickWindow()
@@ -307,6 +304,7 @@ internal sealed class ControlBarForm : Form
         _hotkeys.UnregisterAll();
         _recordHotkeyFailed = !TryRegister(_settings.RecordHotkey, ToggleRecording);
         _screenshotHotkeyFailed = !TryRegister(_settings.ScreenshotHotkey, TakeScreenshot);
+        SetRecordHint(_recordHotkeyFailed ? "" : _settings.RecordHotkey);
         var failed = new List<string>();
         if (_recordHotkeyFailed)
             failed.Add($"錄影 {_settings.RecordHotkey}");
@@ -354,13 +352,13 @@ internal sealed class ControlBarForm : Form
     {
         _baseStatus = text;
         if (!_flashTimer.Enabled)
-            _status.Text = text;
+            Status = text;
     }
 
     /// <summary>Shows a message for 2 seconds, then the previous one again.</summary>
     private void FlashStatus(string text)
     {
-        _status.Text = text;
+        Status = text;
         _flashTimer.Stop();
         _flashTimer.Start();
     }
