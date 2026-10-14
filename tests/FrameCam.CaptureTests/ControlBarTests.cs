@@ -48,6 +48,36 @@ public class ControlBarTests
         }
     });
 
+    [Fact]
+    public void Settings_dialog_is_not_covered_by_the_control_bar() => Sta.Run(async () =>
+    {
+        var bar = new ControlBarForm(NewSettingsFile());
+        try
+        {
+            bar.Show();
+            await Task.Delay(300);
+            Rectangle overlap = Rectangle.Empty;
+            IntPtr dialogHandle = IntPtr.Zero, windowOnTop = IntPtr.Zero;
+            SynchronizationContext.Current!.Post(async _ =>
+            {
+                var dialog = Application.OpenForms.OfType<SettingsForm>().Single();
+                await Task.Delay(300);
+                overlap = Rectangle.Intersect(dialog.Bounds, bar.Bounds);
+                dialogHandle = dialog.Handle;
+                windowOnTop = TestNative.TopLevelWindowAt(new Point(overlap.X + overlap.Width / 2, overlap.Y + overlap.Height / 2));
+                dialog.Close();
+            }, null);
+            bar.OpenSettings(); // returns when the posted callback has closed the dialog
+
+            Assert.False(overlap.IsEmpty); // the dialog opens over the bar
+            Assert.Equal(dialogHandle, windowOnTop);
+        }
+        finally
+        {
+            bar.Close();
+        }
+    });
+
     private static bool CanRegister(Keys keys)
     {
         using var probe = new HotkeyManager();

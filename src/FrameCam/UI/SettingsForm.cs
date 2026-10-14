@@ -22,6 +22,7 @@ internal sealed class SettingsForm : Form
         MaximizeBox = false;
         MinimizeBox = false;
         ShowInTaskbar = false;
+        TopMost = true; // its owner, the control bar, is always on top; a dialog that is not would open behind it
         StartPosition = FormStartPosition.CenterParent;
         AutoSize = true;
         AutoSizeMode = AutoSizeMode.GrowAndShrink;
