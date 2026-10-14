@@ -12,7 +12,6 @@ internal sealed class HighlightWindow : Form
     {
         FormBorderStyle = FormBorderStyle.None;
         ShowInTaskbar = false;
-        TopMost = true;
         StartPosition = FormStartPosition.Manual;
         AutoScaleMode = AutoScaleMode.None;
         BackColor = Color.Orange;
@@ -25,7 +24,9 @@ internal sealed class HighlightWindow : Form
         get
         {
             var cp = base.CreateParams;
-            cp.ExStyle |= ClickThrough.ExStyle;
+            // Always on top through the style: the TopMost property would make Show() focus this window,
+            // so Esc and Ctrl would no longer reach the window picker.
+            cp.ExStyle |= ClickThrough.ExStyle | NativeMethods.WS_EX_TOPMOST;
             return cp;
         }
     }
