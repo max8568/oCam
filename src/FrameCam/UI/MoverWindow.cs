@@ -55,7 +55,7 @@ internal sealed class MoverWindow : LayeredWindow
     {
         base.OnMouseDown(e);
         if (e.Button == MouseButtons.Left)
-            _frame.StartDrag(FrameHandle.Move);
+            _frame.StartDrag(FrameHandle.Move, magnify: false);
     }
 
     protected override void OnMouseMove(MouseEventArgs e)

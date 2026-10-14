@@ -33,6 +33,7 @@ internal sealed class FrameWindow : Form
     private MoverWindow? _mover;
 
     private FrameHandle? _dragHandle;
+    private bool _dragMagnifies;
     private PixelPoint _dragStartCursor;
     private PixelRect _dragStartRegion;
     private SnapTargets _dragSnap = SnapTargets.None;
@@ -52,7 +53,7 @@ internal sealed class FrameWindow : Form
         ApplyLayout();
     }
 
-    /// <summary>Raised on every drag step and keyboard nudge.</summary>
+    /// <summary>Raised on every drag step and keyboard nudge; the magnifier shows for it. Not raised when dragging by the arrow in the middle.</summary>
     public event EventHandler<AdjustingEventArgs>? Adjusting;
 
     /// <summary>Raised when a drag ends, and right after each keyboard nudge.</summary>
@@ -182,19 +183,24 @@ internal sealed class FrameWindow : Form
         EndDrag();
     }
 
-    /// <summary>Starts dragging a part of the frame from where the mouse is now; also used by the arrow in the middle.</summary>
-    internal void StartDrag(FrameHandle handle)
+    /// <summary>
+    /// Starts dragging a part of the frame from where the mouse is now. The arrow in the middle uses it too,
+    /// with <paramref name="magnify"/> false: no magnifier while dragging by it.
+    /// </summary>
+    internal void StartDrag(FrameHandle handle, bool magnify = true)
     {
         if (_locked)
             return;
         var cursor = MousePosition.ToPixelPoint();
         _dragHandle = handle;
+        _dragMagnifies = magnify;
         _dragStartCursor = cursor;
         _dragStartRegion = _region;
         _dragSnap = handle == FrameHandle.Move ? SnapTargets.None : SnapSource?.Invoke(_monitor.Bounds) ?? SnapTargets.None;
         if (handle != FrameHandle.Move)
             ActiveHandle = handle;
-        Adjusting?.Invoke(this, new AdjustingEventArgs(MagnifierMath.FocusPoint(_region, handle, cursor), cursor));
+        if (magnify)
+            Adjusting?.Invoke(this, new AdjustingEventArgs(MagnifierMath.FocusPoint(_region, handle, cursor), cursor));
     }
 
     /// <summary>Follows the mouse while a drag is going on.</summary>
@@ -214,7 +220,8 @@ internal sealed class FrameWindow : Form
             var snap = (ModifierKeys & Keys.Alt) != 0 ? SnapTargets.None : _dragSnap;
             SetRegion(FrameGeometry.Resize(_dragStartRegion, handle, delta, _monitor.Bounds, snap), _monitor);
         }
-        Adjusting?.Invoke(this, new AdjustingEventArgs(MagnifierMath.FocusPoint(_region, handle, cursor), cursor));
+        if (_dragMagnifies)
+            Adjusting?.Invoke(this, new AdjustingEventArgs(MagnifierMath.FocusPoint(_region, handle, cursor), cursor));
     }
 
     /// <summary>Ends a drag; the magnifier hides a moment later.</summary>

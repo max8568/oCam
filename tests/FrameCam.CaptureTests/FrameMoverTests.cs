@@ -48,7 +48,7 @@ public class FrameMoverTests
     });
 
     [Fact]
-    public void Pressing_the_square_starts_moving_the_frame() => Sta.Run(async () =>
+    public void Pressing_the_square_starts_a_drag_without_the_magnifier() => Sta.Run(async () =>
     {
         var monitor = Screens.All().First();
         var region = new PixelRect(monitor.Bounds.Left + 301, monitor.Bounds.Top + 203, 640, 360);
@@ -61,8 +61,8 @@ public class FrameMoverTests
 
         TestNative.Click(MoverOf(frame).Handle, new Point(5, 5));
 
-        Assert.Equal(1, adjusting);
-        Assert.Equal(1, ended);
+        Assert.Equal(0, adjusting); // the magnifier shows on Adjusting
+        Assert.Equal(1, ended);     // only raised when a drag was going on
     });
 
     private static MoverWindow MoverOf(FrameWindow frame) =>
