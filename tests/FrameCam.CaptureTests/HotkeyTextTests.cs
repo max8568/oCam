@@ -19,6 +19,29 @@ public class HotkeyTextTests
     [InlineData("")]
     [InlineData("Foo")]
     [InlineData("Ctrl")]
+    [InlineData("R")]
+    [InlineData("Back")]
     public void Unusable_text_is_rejected(string text) =>
         Assert.False(HotkeyText.TryParse(text, out _));
+
+    [Theory]
+    [InlineData(Keys.Back)]
+    [InlineData(Keys.Space)]
+    [InlineData(Keys.Delete)]
+    [InlineData(Keys.Left)]
+    [InlineData(Keys.R)]
+    [InlineData(Keys.Shift | Keys.R)]
+    [InlineData(Keys.Control | Keys.ControlKey)]
+    public void Keys_used_for_typing_cannot_be_global_hotkeys(Keys keys) =>
+        Assert.False(HotkeyText.IsUsable(keys));
+
+    [Theory]
+    [InlineData(Keys.F2)]
+    [InlineData(Keys.Shift | Keys.F12)]
+    [InlineData(Keys.PrintScreen)]
+    [InlineData(Keys.Control | Keys.R)]
+    [InlineData(Keys.Alt | Keys.Back)]
+    [InlineData(Keys.Control | Keys.Shift | Keys.S)]
+    public void Function_keys_and_keys_with_ctrl_or_alt_can_be_global_hotkeys(Keys keys) =>
+        Assert.True(HotkeyText.IsUsable(keys));
 }

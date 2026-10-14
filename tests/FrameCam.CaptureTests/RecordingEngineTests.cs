@@ -134,6 +134,32 @@ public class RecordingEngineTests
         Assert.True(File.Exists(video));
     }
 
+    [CaptureFact]
+    public void Stopping_before_the_first_frame_still_finishes_once()
+    {
+        // F2 pressed twice quickly: Stop arrives before Started. The control bar waits for the ending event,
+        // so it must come, or the bar could neither record nor close again.
+        string video = Path.Combine(Directory.CreateTempSubdirectory("framecam 測試 early stop ").FullName, "early.mp4");
+        var (endings, stillRecording) = Sta.Run(async () =>
+        {
+            var screen = Screen.PrimaryScreen!;
+            var monitor = screen.Bounds.ToPixelRect();
+            using var recorder = new ScreenRecorderLibRecorder();
+            int count = 0;
+            recorder.Completed += (_, _) => count++;
+            recorder.Failed += (_, _) => count++;
+            recorder.Start(new RecordingRequest(screen.DeviceName, monitor, new PixelRect(monitor.Left, monitor.Top, 320, 240), 30, video));
+            recorder.Stop();
+            for (int i = 0; i < 100 && recorder.IsRecording; i++)
+                await Task.Delay(100);
+            await Task.Delay(1000); // a second ending event would arrive here
+            return (count, recorder.IsRecording);
+        });
+
+        Assert.False(stillRecording);
+        Assert.Equal(1, endings);
+    }
+
     private static void CheckRegion(bool primary, Func<PixelRect, PixelRect> placeRegion)
     {
         // A folder name with a space and CJK characters, like one a user might pick.

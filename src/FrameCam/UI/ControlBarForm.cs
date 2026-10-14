@@ -47,6 +47,14 @@ internal sealed class ControlBarForm : Form
         _frame = new FrameWindow(region, monitor) { SnapSource = WindowEnumerator.SnapTargetsFor };
         _magnifier = new MagnifierWindow(_frame);
         _frame.ScaleChanged += (_, _) => OnDisplayChanged();
+        _frame.FormClosing += (_, e) =>
+        {
+            // Alt+F4 on the frame ends the program the normal way, which waits for a recording to be saved.
+            if (e.CloseReason != CloseReason.UserClosing)
+                return;
+            e.Cancel = true;
+            BeginInvoke(Close);
+        };
 
         _recorder.Started += (_, _) => OnRecordingStarted();
         _recorder.Completed += (_, path) => OnRecordingEnded($"{_stopNote}已存檔 {Path.GetFileName(path)}");
@@ -87,6 +95,8 @@ internal sealed class ControlBarForm : Form
         if (settingsError is not null)
             SetStatus(settingsError);
     }
+
+    internal FrameWindow Frame => _frame;
 
     protected override void OnHandleCreated(EventArgs e)
     {
@@ -275,14 +285,21 @@ internal sealed class ControlBarForm : Form
 
     // ---- Settings and hotkeys (spec 8.5) ----
 
-    private void OpenSettings()
+    internal void OpenSettings()
     {
-        using var dialog = new SettingsForm(_settings, _recordHotkeyFailed, _screenshotHotkeyFailed);
-        if (dialog.ShowDialog(this) != DialogResult.OK)
-            return;
-        _settings = dialog.ToSettings(_settings);
-        SaveSettings();
-        RegisterHotkeys();
+        _hotkeys.UnregisterAll(); // otherwise pressing F2 in a hotkey box records instead of reaching the box
+        try
+        {
+            using var dialog = new SettingsForm(_settings, _recordHotkeyFailed, _screenshotHotkeyFailed);
+            if (dialog.ShowDialog(this) != DialogResult.OK)
+                return;
+            _settings = dialog.ToSettings(_settings);
+            SaveSettings();
+        }
+        finally
+        {
+            RegisterHotkeys();
+        }
     }
 
     private void RegisterHotkeys()

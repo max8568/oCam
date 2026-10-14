@@ -61,6 +61,31 @@ public class SettingsStoreTests
     }
 
     [Fact]
+    public void Broken_file_is_kept_as_settings_json_bad_so_the_next_save_does_not_lose_it()
+    {
+        string path = WriteFile("{ not json");
+        var (_, error) = SettingsStore.Load(path);
+        Assert.Equal("{ not json", File.ReadAllText(path + ".bad"));
+        Assert.Contains("settings.json.bad", error);
+    }
+
+    [Fact]
+    public void Common_hand_edits_still_load()
+    {
+        var (settings, error) = SettingsStore.Load(WriteFile(
+            """
+            {
+              // edited by hand
+              "outputFolder": "D:\\錄影",
+              "RecordHotkey": "F6",
+              "FramesPerSecond": "30",
+            }
+            """));
+        Assert.Null(error);
+        Assert.Equal(new AppSettings { OutputFolder = @"D:\錄影", RecordHotkey = "F6", FramesPerSecond = 30 }, settings);
+    }
+
+    [Fact]
     public void Unknown_fields_are_ignored_and_missing_or_invalid_ones_use_defaults()
     {
         var (settings, error) = SettingsStore.Load(WriteFile(

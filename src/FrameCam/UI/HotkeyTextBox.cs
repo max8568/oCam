@@ -2,7 +2,7 @@ using System.ComponentModel;
 
 namespace FrameCam.UI;
 
-/// <summary>A box that records the next key combination pressed in it. Modifier keys alone are ignored.</summary>
+/// <summary>A box that records the next key combination pressed in it. Keys that HotkeyText.IsUsable rejects are ignored.</summary>
 internal sealed class HotkeyTextBox : TextBox
 {
     private Keys _hotkey;
@@ -33,9 +33,8 @@ internal sealed class HotkeyTextBox : TextBox
         bool plain = (keyData & Keys.Modifiers) == Keys.None;
         if (plain && code is Keys.Tab or Keys.Escape or Keys.Enter)
             return base.ProcessCmdKey(ref msg, keyData); // keep dialog navigation
-        if (code is Keys.ControlKey or Keys.ShiftKey or Keys.Menu or Keys.LWin or Keys.RWin)
-            return true; // wait for the actual key
-        Hotkey = keyData;
-        return true;
+        if (HotkeyText.IsUsable(keyData))
+            Hotkey = keyData;
+        return true; // otherwise wait for a usable combination
     }
 }

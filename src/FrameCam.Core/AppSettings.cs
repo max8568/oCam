@@ -1,5 +1,6 @@
 using System.Text.Encodings.Web;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 
 namespace FrameCam.Core;
 
@@ -25,6 +26,11 @@ public static class SettingsStore
     {
         WriteIndented = true,
         Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping, // keep CJK folder names readable
+        // Tolerate common hand edits.
+        AllowTrailingCommas = true,
+        ReadCommentHandling = JsonCommentHandling.Skip,
+        PropertyNameCaseInsensitive = true,
+        NumberHandling = JsonNumberHandling.AllowReadingFromString,
     };
 
     public static string DefaultPath =>
@@ -33,6 +39,7 @@ public static class SettingsStore
     /// <summary>
     /// Reads the settings. A missing file gives defaults and no error; an unreadable or invalid file gives
     /// defaults and a message for the user. Unknown fields are ignored; missing or invalid ones get defaults.
+    /// An invalid file is first copied to settings.json.bad, because the next save overwrites it.
     /// </summary>
     public static (AppSettings Settings, string? Error) Load(string path)
     {
@@ -44,7 +51,20 @@ public static class SettingsStore
                 ?? throw new JsonException("settings.json is null");
             return (Normalize(settings), null);
         }
-        catch (Exception e) when (e is JsonException or IOException or UnauthorizedAccessException)
+        catch (JsonException e)
+        {
+            string backup = path + ".bad";
+            try
+            {
+                File.Copy(path, backup, overwrite: true);
+            }
+            catch (Exception copy) when (copy is IOException or UnauthorizedAccessException)
+            {
+                return (new AppSettings(), $"設定檔讀取失敗，改用預設值：{e.Message}");
+            }
+            return (new AppSettings(), $"設定檔讀取失敗，改用預設值，原本的檔案另存為 {Path.GetFileName(backup)}：{e.Message}");
+        }
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException)
         {
             return (new AppSettings(), $"設定檔讀取失敗，改用預設值：{e.Message}");
         }
