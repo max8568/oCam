@@ -62,20 +62,20 @@ public class FrameLayoutTests
 
     [Fact]
     public void Mover_sits_in_the_middle_of_the_region() =>
-        Assert.Equal(new PixelRect(180, 130, 40, 40), Layout.Mover);
+        Assert.Equal(new PixelRect(186, 136, 28, 28), Layout.Mover);
 
     [Theory]
     [InlineData(200, 150)] // center
-    [InlineData(180, 130)] // its top-left pixel
-    [InlineData(219, 169)] // its bottom-right pixel
+    [InlineData(186, 136)] // its top-left pixel
+    [InlineData(213, 163)] // its bottom-right pixel
     public void Pressing_the_mover_moves_the_frame(int x, int y) =>
         Assert.Equal(Handle.Move, Layout.HitTest(new PixelPoint(x, y)));
 
     [Theory]
-    [InlineData(179, 150)]
-    [InlineData(220, 150)]
-    [InlineData(200, 129)]
-    [InlineData(200, 170)]
+    [InlineData(185, 150)]
+    [InlineData(214, 150)]
+    [InlineData(200, 135)]
+    [InlineData(200, 164)]
     public void Points_next_to_the_mover_are_not_on_the_frame(int x, int y) =>
         Assert.Null(Layout.HitTest(new PixelPoint(x, y)));
 

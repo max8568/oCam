@@ -1,5 +1,4 @@
 using System.ComponentModel;
-using System.Drawing.Drawing2D;
 using FrameCam.Core;
 using FrameCam.Native;
 using FrameHandle = FrameCam.Core.Handle; // "Handle" alone means Control.Handle inside a Form
@@ -17,21 +16,21 @@ internal sealed class AdjustingEventArgs(PixelPoint focus, PixelPoint anchor) : 
 
 /// <summary>
 /// The recording frame on screen (spec 7.1). The window's shape is only the border ring, the 8 handles and
-/// the size label, all outside the region, and the four-way arrow in the middle of the region, so the rest of
-/// the region's pixels stay visible and clickable. While recording the arrow is gone. The window is left out
-/// of every screen capture.
+/// the size label, all outside the region, so the region's pixels stay visible and clickable. The four-way
+/// arrow in the middle of the region is a window of its own (<see cref="MoverWindow"/>), hidden while
+/// recording. The window is left out of every screen capture.
 /// </summary>
 internal sealed class FrameWindow : Form
 {
     private static readonly Color IdleColor = Color.FromArgb(0, 120, 215);
     private static readonly Color RecordingColor = Color.FromArgb(220, 40, 40);
     private static readonly Font LabelFont = new("Segoe UI", 12f, FontStyle.Bold, GraphicsUnit.Pixel);
-    private const int ArrowEdge = 2; // white edge around the middle arrow, so it shows on dark and light screens
 
     private PixelRect _region;
     private MonitorInfo _monitor;
     private FrameLayout _layout;
     private bool _locked;
+    private MoverWindow? _mover;
 
     private FrameHandle? _dragHandle;
     private PixelPoint _dragStartCursor;
@@ -87,7 +86,7 @@ internal sealed class FrameWindow : Form
             Capture = false;
             BackColor = value ? RecordingColor : IdleColor;
             Cursor = Cursors.Default;
-            ApplyLayout(); // the mover goes away while recording, and comes back
+            ApplyLayout(); // the arrow in the middle goes away while recording, and comes back
         }
     }
 
@@ -143,6 +142,13 @@ internal sealed class FrameWindow : Form
     {
         base.OnHandleCreated(e);
         CaptureExclusion.Apply(Handle);
+        _mover = new MoverWindow(this, IdleColor);
+    }
+
+    protected override void OnVisibleChanged(EventArgs e)
+    {
+        base.OnVisibleChanged(e);
+        PlaceMover();
     }
 
     protected override void OnDpiChanged(DpiChangedEventArgs e)
@@ -157,11 +163,31 @@ internal sealed class FrameWindow : Form
     protected override void OnMouseDown(MouseEventArgs e)
     {
         base.OnMouseDown(e);
-        if (_locked || e.Button != MouseButtons.Left)
+        if (e.Button == MouseButtons.Left && _layout.HitTest(MousePosition.ToPixelPoint()) is { } handle)
+            StartDrag(handle);
+    }
+
+    protected override void OnMouseMove(MouseEventArgs e)
+    {
+        base.OnMouseMove(e);
+        if (_dragHandle is null)
+            Cursor = _locked ? Cursors.Default : CursorFor(_layout.HitTest(MousePosition.ToPixelPoint()));
+        else
+            DragStep();
+    }
+
+    protected override void OnMouseUp(MouseEventArgs e)
+    {
+        base.OnMouseUp(e);
+        EndDrag();
+    }
+
+    /// <summary>Starts dragging a part of the frame from where the mouse is now; also used by the arrow in the middle.</summary>
+    internal void StartDrag(FrameHandle handle)
+    {
+        if (_locked)
             return;
         var cursor = MousePosition.ToPixelPoint();
-        if (_layout.HitTest(cursor) is not { } handle)
-            return;
         _dragHandle = handle;
         _dragStartCursor = cursor;
         _dragStartRegion = _region;
@@ -171,15 +197,12 @@ internal sealed class FrameWindow : Form
         Adjusting?.Invoke(this, new AdjustingEventArgs(MagnifierMath.FocusPoint(_region, handle, cursor), cursor));
     }
 
-    protected override void OnMouseMove(MouseEventArgs e)
+    /// <summary>Follows the mouse while a drag is going on.</summary>
+    internal void DragStep()
     {
-        base.OnMouseMove(e);
-        var cursor = MousePosition.ToPixelPoint();
         if (_dragHandle is not { } handle)
-        {
-            Cursor = _locked ? Cursors.Default : CursorFor(_layout.HitTest(cursor));
             return;
-        }
+        var cursor = MousePosition.ToPixelPoint();
         var delta = new PixelPoint(cursor.X - _dragStartCursor.X, cursor.Y - _dragStartCursor.Y);
         if (handle == FrameHandle.Move)
         {
@@ -194,9 +217,9 @@ internal sealed class FrameWindow : Form
         Adjusting?.Invoke(this, new AdjustingEventArgs(MagnifierMath.FocusPoint(_region, handle, cursor), cursor));
     }
 
-    protected override void OnMouseUp(MouseEventArgs e)
+    /// <summary>Ends a drag; the magnifier hides a moment later.</summary>
+    internal void EndDrag()
     {
-        base.OnMouseUp(e);
         if (_dragHandle is null)
             return;
         _dragHandle = null;
@@ -216,13 +239,6 @@ internal sealed class FrameWindow : Form
             var c = ToClient(r);
             g.FillRectangle(_locked ? border : Brushes.White, c);
             g.DrawRectangle(outline, c.X, c.Y, c.Width - 1, c.Height - 1);
-        }
-        if (ShowsMover(out var mover))
-        {
-            using var arrow = MoverArrow(ToClient(mover));
-            using var edge = ArrowEdgeOf(arrow);
-            g.FillPath(Brushes.White, edge);
-            g.FillPath(border, arrow);
         }
         var label = ToClient(_layout.Label);
         g.FillRectangle(border, label);
@@ -247,47 +263,28 @@ internal sealed class FrameWindow : Form
         foreach (var (_, r) in _layout.Handles)
             shape.Union(ToClient(r));
         shape.Union(ToClient(_layout.Label));
-        if (ShowsMover(out var mover))
-        {
-            using var arrow = MoverArrow(ToClient(mover));
-            using var edge = ArrowEdgeOf(arrow);
-            shape.Union(edge);
-            shape.Union(arrow); // only the arrow itself: between its arms the screen shows through
-        }
         var old = Region;
         Region = shape;
         old?.Dispose();
         Invalidate();
+        PlaceMover();
     }
 
-    private bool ShowsMover(out PixelRect mover)
+    /// <summary>Puts the arrow window in the middle of the region, or hides it while recording or when the region is small.</summary>
+    private void PlaceMover()
     {
-        mover = _layout.Mover ?? default;
-        return !_locked && _layout.Mover is not null;
-    }
-
-    /// <summary>The four-way arrow that fills the mover's box: two thick bars crossing and a solid tip at each end.</summary>
-    private static GraphicsPath MoverArrow(Rectangle box)
-    {
-        float s = box.Width / 40f; // drawn on a 40 × 40 grid
-        PointF P(float x, float y) => new(box.Left + x * s, box.Top + y * s);
-        var path = new GraphicsPath(FillMode.Winding);
-        path.AddPolygon(new[] { P(7, 18), P(33, 18), P(33, 22), P(7, 22) });
-        path.AddPolygon(new[] { P(18, 7), P(22, 7), P(22, 33), P(18, 33) });
-        path.AddPolygon(new[] { P(1, 20), P(9, 13), P(9, 27) });
-        path.AddPolygon(new[] { P(39, 20), P(31, 13), P(31, 27) });
-        path.AddPolygon(new[] { P(20, 1), P(27, 9), P(13, 9) });
-        path.AddPolygon(new[] { P(20, 39), P(13, 31), P(27, 31) });
-        return path;
-    }
-
-    private static GraphicsPath ArrowEdgeOf(GraphicsPath arrow)
-    {
-        var edge = (GraphicsPath)arrow.Clone();
-        using var pen = new Pen(Color.White, 2 * ArrowEdge) { LineJoin = LineJoin.Round };
-        edge.Widen(pen);
-        edge.FillMode = FillMode.Winding;
-        return edge;
+        if (_mover is null)
+            return;
+        if (Visible && !_locked && _layout.Mover is { } m)
+        {
+            _mover.Location = new Point(m.Left, m.Top);
+            if (!_mover.Visible)
+                _mover.Show();
+        }
+        else if (_mover.Visible)
+        {
+            _mover.Hide();
+        }
     }
 
     private Rectangle ToClient(PixelRect r) =>

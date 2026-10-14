@@ -7,18 +7,7 @@ namespace FrameCam.CaptureTests;
 public class FrameMoverTests
 {
     [Fact]
-    public void Between_the_arms_of_the_arrow_clicks_reach_the_window_below() => Sta.Run(async () =>
-    {
-        var monitor = Screens.All().First();
-        var region = new PixelRect(monitor.Bounds.Left + 301, monitor.Bounds.Top + 203, 640, 360);
-        using var frame = new FrameWindow(region, monitor);
-        frame.Show();
-        await Task.Delay(300);
-        Assert.NotEqual(frame.Handle, TestNative.TopLevelWindowAt(new Point(region.Center.X + 12, region.Center.Y + 12)));
-    });
-
-    [Fact]
-    public void Middle_of_the_frame_takes_clicks_except_while_recording() => Sta.Run(async () =>
+    public void The_whole_square_in_the_middle_takes_clicks_except_while_recording() => Sta.Run(async () =>
     {
         var monitor = Screens.All().First();
         var region = new PixelRect(monitor.Bounds.Left + 301, monitor.Bounds.Top + 203, 640, 360);
@@ -26,14 +15,56 @@ public class FrameMoverTests
         using var frame = new FrameWindow(region, monitor);
         frame.Show();
         await Task.Delay(300);
-        Assert.Equal(frame.Handle, TestNative.TopLevelWindowAt(center));
+        var mover = MoverOf(frame);
+        var square = frame.CurrentLayout.Mover!.Value;
+        Assert.Equal(mover.Handle, TestNative.TopLevelWindowAt(new Point(square.Left, square.Top)));
+        Assert.Equal(mover.Handle, TestNative.TopLevelWindowAt(new Point(square.Right - 1, square.Bottom - 1)));
+        Assert.Equal(mover.Handle, TestNative.TopLevelWindowAt(new Point(square.Left + 4, square.Top + 4))); // between the arms
 
         frame.Locked = true;
         await Task.Delay(100);
+        Assert.False(mover.Visible);
+        Assert.NotEqual(mover.Handle, TestNative.TopLevelWindowAt(center));
         Assert.NotEqual(frame.Handle, TestNative.TopLevelWindowAt(center));
 
         frame.Locked = false;
         await Task.Delay(100);
-        Assert.Equal(frame.Handle, TestNative.TopLevelWindowAt(center));
+        Assert.Equal(mover.Handle, TestNative.TopLevelWindowAt(center));
     });
+
+    [Fact]
+    public void Square_follows_the_frame() => Sta.Run(async () =>
+    {
+        var monitor = Screens.All().First();
+        var region = new PixelRect(monitor.Bounds.Left + 301, monitor.Bounds.Top + 203, 640, 360);
+        using var frame = new FrameWindow(region, monitor);
+        frame.Show();
+        await Task.Delay(300);
+
+        frame.SetRegion(new PixelRect(region.Left + 50, region.Top + 40, 400, 300), monitor);
+        await Task.Delay(100);
+
+        Assert.Equal(frame.CurrentLayout.Mover!.Value.ToRectangle(), MoverOf(frame).Bounds);
+    });
+
+    [Fact]
+    public void Pressing_the_square_starts_moving_the_frame() => Sta.Run(async () =>
+    {
+        var monitor = Screens.All().First();
+        var region = new PixelRect(monitor.Bounds.Left + 301, monitor.Bounds.Top + 203, 640, 360);
+        using var frame = new FrameWindow(region, monitor);
+        frame.Show();
+        await Task.Delay(300);
+        int adjusting = 0, ended = 0;
+        frame.Adjusting += (_, _) => adjusting++;
+        frame.AdjustEnded += (_, _) => ended++;
+
+        TestNative.Click(MoverOf(frame).Handle, new Point(5, 5));
+
+        Assert.Equal(1, adjusting);
+        Assert.Equal(1, ended);
+    });
+
+    private static MoverWindow MoverOf(FrameWindow frame) =>
+        Application.OpenForms.OfType<MoverWindow>().Single(m => m.Owner == frame);
 }
