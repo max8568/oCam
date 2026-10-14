@@ -1,3 +1,6 @@
+using FrameCam.Core;
+using FrameCam.UI;
+
 namespace FrameCam;
 
 internal static class Program
@@ -6,6 +9,8 @@ internal static class Program
     private static void Main()
     {
         ApplicationConfiguration.Initialize();
-        Application.Run(new Form { Text = "FrameCam" });
+        // Temporary harness until Task 11: only the frame. Click the frame, then Alt+F4 to quit.
+        var (region, monitor) = RegionPlacement.Restore(null, Screens.All());
+        Application.Run(new FrameWindow(region, monitor));
     }
 }
