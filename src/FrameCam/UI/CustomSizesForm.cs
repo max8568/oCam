@@ -20,9 +20,9 @@ internal sealed class CustomSizesForm : LightDialog
         BackColor = Palette.Field,
         AccessibleName = "已儲存的尺寸",
     };
-    private readonly Label _empty = new() { Text = NoneYet, Dock = DockStyle.Fill, TextAlign = ContentAlignment.MiddleCenter, ForeColor = Palette.Muted };
+    private readonly Label _empty = new() { Text = NoneYet, TextAlign = ContentAlignment.MiddleCenter, ForeColor = Palette.Muted };
     private readonly RoundButton _delete = new() { Text = "刪除", Bounds = new Rectangle(298, 238, 100, 30), AccessibleName = "刪除選取的尺寸" };
-    private readonly TextBox _label = new() { BorderStyle = BorderStyle.None, AccessibleName = "標籤", MaxLength = CustomSize.MaxLabelLength };
+    private readonly TextBox _label = new() { BorderStyle = BorderStyle.None, AccessibleName = "標籤" }; // no length limit: too long gets a message instead
     private readonly TextBox _width = new() { BorderStyle = BorderStyle.None, AccessibleName = "寬" };
     private readonly TextBox _height = new() { BorderStyle = BorderStyle.None, AccessibleName = "高" };
     private readonly Label _message = new() { AutoSize = true, Location = new Point(34, 358), ForeColor = Palette.ErrorText, Visible = false };
@@ -35,7 +35,7 @@ internal sealed class CustomSizesForm : LightDialog
         SuspendLayout();
 
         var list = new FieldBox { Bounds = new Rectangle(22, 80, 376, 150), CornerRadius = 16 };
-        _list.Bounds = new Rectangle(10, 10, 356, 130);
+        _list.Bounds = _empty.Bounds = new Rectangle(10, 10, 356, 130); // inside the round corners
         list.Controls.Add(_empty);
         list.Controls.Add(_list);
         _list.DrawItem += DrawSize;
@@ -64,6 +64,12 @@ internal sealed class CustomSizesForm : LightDialog
         ShowSizes(selected: -1);
         ResumeLayout(false);
         PerformLayout();
+    }
+
+    protected override void OnLoad(EventArgs e)
+    {
+        base.OnLoad(e);
+        _list.ItemHeight = LogicalToDeviceUnits(28); // owner-drawn rows do not grow with the display scale by themselves
     }
 
     /// <summary>The saved sizes, with this dialog's additions and deletions.</summary>

@@ -44,6 +44,15 @@ internal static class TestNative
         SendMessage(hwnd, WM_LBUTTONUP, IntPtr.Zero, position);
     }
 
+    private const uint WM_CHAR = 0x0102;
+
+    /// <summary>Types the text into a window as if from the keyboard, without touching the real keyboard.</summary>
+    public static void Type(IntPtr hwnd, string text)
+    {
+        foreach (char c in text)
+            SendMessage(hwnd, WM_CHAR, c, IntPtr.Zero);
+    }
+
     [DllImport("user32.dll")]
     [return: MarshalAs(UnmanagedType.Bool)]
     private static extern bool GetWindowDisplayAffinity(IntPtr hwnd, out uint affinity);

@@ -66,6 +66,13 @@ public class CustomSizeTests
     }
 
     [Fact]
+    public void Label_length_counts_what_the_user_sees_as_characters()
+    {
+        Assert.NotNull(CustomSize.Parse(string.Concat(Enumerable.Repeat("🎮", 20)), "800", "600").Size);
+        Assert.Null(CustomSize.Parse(string.Concat(Enumerable.Repeat("🎮", 21)), "800", "600").Size);
+    }
+
+    [Fact]
     public void Menu_text_shows_the_label_and_the_size()
     {
         Assert.Equal("直播（1600 × 900）", new CustomSize("直播", 1600, 900).MenuText);

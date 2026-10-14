@@ -352,6 +352,54 @@ public class ControlBarTests
     });
 
     [Fact]
+    public void Picking_a_size_while_recording_leaves_the_region_alone() => Sta.Run(async () =>
+    {
+        var bar = new ControlBarForm(NewSettingsFile(new CustomSize("", 800, 600)));
+        try
+        {
+            bar.Show();
+            await Task.Delay(300);
+            using var menu = bar.BuildSizeMenu(); // opened just before recording started, e.g. with the hotkey
+            var before = bar.Frame.CaptureRegion;
+            bar.Frame.Locked = true;               // what starting a recording does to the frame
+            menu.Items.Cast<ToolStripItem>().Single(i => i.Text == "800 × 600").PerformClick();
+            menu.Items.Cast<ToolStripItem>().Single(i => i.Text == "整個螢幕").PerformClick();
+
+            Assert.Equal(before, bar.Frame.CaptureRegion);
+        }
+        finally
+        {
+            bar.Frame.Locked = false;
+            bar.Close();
+        }
+    });
+
+    [Fact]
+    public void Hotkeys_are_released_while_the_custom_sizes_dialog_is_open() => Sta.Run(async () =>
+    {
+        var bar = new ControlBarForm(NewSettingsFile());
+        try
+        {
+            bar.Show();
+            await Task.Delay(300);
+            bool freeDuringDialog = false;
+            SynchronizationContext.Current!.Post(_ =>
+            {
+                freeDuringDialog = CanRegister(RecordKey); // otherwise F2 could record the dialog itself
+                Application.OpenForms.OfType<CustomSizesForm>().Single().Close();
+            }, null);
+            bar.OpenCustomSizes();
+
+            Assert.True(freeDuringDialog);
+            Assert.False(CanRegister(RecordKey)); // registered again afterwards
+        }
+        finally
+        {
+            bar.Close();
+        }
+    });
+
+    [Fact]
     public void Sizes_added_in_the_dialog_are_saved_and_listed() => Sta.Run(async () =>
     {
         string path = NewSettingsFile();

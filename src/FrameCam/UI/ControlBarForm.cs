@@ -259,14 +259,14 @@ internal sealed class ControlBarForm : PillBarWindow
             var target = FrameAdjust.ApplyPreset(_frame.CaptureRegion, size, monitor.Bounds);
             var item = new ToolStripMenuItem(text) { Enabled = target is not null };
             if (target is { } region)
-                item.Click += (_, _) => _frame.SetRegion(region, monitor);
+                item.Click += (_, _) => SetRegionUnlessRecording(region, monitor);
             return item;
         }
 
         foreach (var size in FrameAdjust.Presets)
             menu.Items.Add(SizeItem($"{size.Width} × {size.Height}", size));
         var full = new ToolStripMenuItem("整個螢幕");
-        full.Click += (_, _) => _frame.SetRegion(FrameAdjust.FullMonitor(monitor.Bounds), monitor);
+        full.Click += (_, _) => SetRegionUnlessRecording(FrameAdjust.FullMonitor(monitor.Bounds), monitor);
         menu.Items.Add(full);
         menu.Items.Add(new ToolStripSeparator());
         if (_settings.CustomSizes.Count > 0)
@@ -282,14 +282,29 @@ internal sealed class ControlBarForm : PillBarWindow
         return menu;
     }
 
+    /// <summary>The menu may have opened before a recording started with the hotkey; the region stays put while recording.</summary>
+    private void SetRegionUnlessRecording(PixelRect region, MonitorInfo monitor)
+    {
+        if (!_frame.Locked)
+            _frame.SetRegion(region, monitor);
+    }
+
     /// <summary>Opens the custom sizes dialog and saves what it ends with, however it is closed.</summary>
     internal void OpenCustomSizes()
     {
-        var region = _frame.CaptureRegion;
-        using var dialog = new CustomSizesForm(_settings.CustomSizes, new PixelSize(region.Width, region.Height));
-        dialog.ShowDialog(this);
-        _settings = _settings with { CustomSizes = dialog.Sizes };
-        SaveSettings();
+        _hotkeys.UnregisterAll(); // otherwise F2 could start a recording with the dialog in it
+        try
+        {
+            var region = _frame.CaptureRegion;
+            using var dialog = new CustomSizesForm(_settings.CustomSizes, new PixelSize(region.Width, region.Height));
+            dialog.ShowDialog(this);
+            _settings = _settings with { CustomSizes = dialog.Sizes };
+            SaveSettings();
+        }
+        finally
+        {
+            RegisterHotkeys();
+        }
     }
 
     private void PickWindow()

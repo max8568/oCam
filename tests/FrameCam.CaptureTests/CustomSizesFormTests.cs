@@ -69,6 +69,20 @@ public class CustomSizesFormTests
     });
 
     [Fact]
+    public void Too_long_label_is_explained_rather_than_cut_off() => Sta.Run(async () =>
+    {
+        using var dialog = await Show([]);
+        Type(dialog, "", "800", "600");
+        var label = Box(dialog, "標籤");
+        TestNative.Type(label.Handle, new string('字', 25)); // typing obeys a length limit on the box, setting Text does not
+        Assert.Equal(25, label.Text.Length);
+        Button(dialog, "新增").PerformClick();
+
+        Assert.Empty(dialog.Sizes);
+        Assert.Contains(All<Label>(dialog), l => l.Visible && l.Text == "標籤最多 20 個字");
+    });
+
+    [Fact]
     public void The_same_size_with_the_same_label_is_not_added_twice() => Sta.Run(async () =>
     {
         using var dialog = await Show([new CustomSize("直播", 1600, 900)]);

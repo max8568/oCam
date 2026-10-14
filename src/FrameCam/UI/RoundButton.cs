@@ -63,6 +63,13 @@ internal sealed class RoundButton : Button
         base.OnMouseUp(e);
     }
 
+    protected override void OnEnabledChanged(EventArgs e)
+    {
+        _hover = _down = false; // a disabled button gets no mouse-leave, so do not keep looking hovered
+        Invalidate();
+        base.OnEnabledChanged(e);
+    }
+
     protected override void OnPaint(PaintEventArgs e)
     {
         var g = e.Graphics;
