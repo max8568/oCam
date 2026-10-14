@@ -4,14 +4,14 @@ namespace FrameCam.Core;
 /// Where the frame window's parts go for a region, in screen pixels (spec 7.1): a 2-pixel border ring just
 /// outside the region, 9×9 handles outside its corners and edge midpoints, the size label above the
 /// top-left corner, or inside the region's top-left when there is no room above on the monitor, and a
-/// 24×24 mover in the middle of regions at least 96 pixels wide and high. The label and the mover move the frame.
+/// 40×40 mover in the middle of regions at least 96 pixels wide and high. The label and the mover move the frame.
 /// </summary>
 public sealed class FrameLayout
 {
     public const int BorderWidth = 2;
     public const int HandleSize = 9;
     public const int CornerReach = 16;
-    public const int MoverSize = 24;
+    public const int MoverSize = 40;
     public const int MoverMinRegion = 96;
 
     public FrameLayout(PixelRect region, PixelSize labelSize, PixelRect monitor)

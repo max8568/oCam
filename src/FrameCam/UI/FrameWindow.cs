@@ -1,4 +1,5 @@
 using System.ComponentModel;
+using System.Drawing.Drawing2D;
 using FrameCam.Core;
 using FrameCam.Native;
 using FrameHandle = FrameCam.Core.Handle; // "Handle" alone means Control.Handle inside a Form
@@ -16,15 +17,16 @@ internal sealed class AdjustingEventArgs(PixelPoint focus, PixelPoint anchor) : 
 
 /// <summary>
 /// The recording frame on screen (spec 7.1). The window's shape is only the border ring, the 8 handles and
-/// the size label, all outside the region, and the mover in the middle of the region, so the rest of the
-/// region's pixels stay visible and clickable. While recording the mover is gone. The window is left out of
-/// every screen capture.
+/// the size label, all outside the region, and the four-way arrow in the middle of the region, so the rest of
+/// the region's pixels stay visible and clickable. While recording the arrow is gone. The window is left out
+/// of every screen capture.
 /// </summary>
 internal sealed class FrameWindow : Form
 {
     private static readonly Color IdleColor = Color.FromArgb(0, 120, 215);
     private static readonly Color RecordingColor = Color.FromArgb(220, 40, 40);
     private static readonly Font LabelFont = new("Segoe UI", 12f, FontStyle.Bold, GraphicsUnit.Pixel);
+    private const int ArrowEdge = 2; // white edge around the middle arrow, so it shows on dark and light screens
 
     private PixelRect _region;
     private MonitorInfo _monitor;
@@ -217,10 +219,10 @@ internal sealed class FrameWindow : Form
         }
         if (ShowsMover(out var mover))
         {
-            var m = ToClient(mover);
-            g.FillRectangle(Brushes.White, m);
-            g.DrawRectangle(outline, m.X, m.Y, m.Width - 1, m.Height - 1);
-            Glyphs.Draw(g, Glyph.Move, new RectangleF(m.X + 3, m.Y + 3, m.Width - 6, m.Height - 6), color);
+            using var arrow = MoverArrow(ToClient(mover));
+            using var edge = ArrowEdgeOf(arrow);
+            g.FillPath(Brushes.White, edge);
+            g.FillPath(border, arrow);
         }
         var label = ToClient(_layout.Label);
         g.FillRectangle(border, label);
@@ -246,7 +248,12 @@ internal sealed class FrameWindow : Form
             shape.Union(ToClient(r));
         shape.Union(ToClient(_layout.Label));
         if (ShowsMover(out var mover))
-            shape.Union(ToClient(mover));
+        {
+            using var arrow = MoverArrow(ToClient(mover));
+            using var edge = ArrowEdgeOf(arrow);
+            shape.Union(edge);
+            shape.Union(arrow); // only the arrow itself: between its arms the screen shows through
+        }
         var old = Region;
         Region = shape;
         old?.Dispose();
@@ -257,6 +264,30 @@ internal sealed class FrameWindow : Form
     {
         mover = _layout.Mover ?? default;
         return !_locked && _layout.Mover is not null;
+    }
+
+    /// <summary>The four-way arrow that fills the mover's box: two thick bars crossing and a solid tip at each end.</summary>
+    private static GraphicsPath MoverArrow(Rectangle box)
+    {
+        float s = box.Width / 40f; // drawn on a 40 × 40 grid
+        PointF P(float x, float y) => new(box.Left + x * s, box.Top + y * s);
+        var path = new GraphicsPath(FillMode.Winding);
+        path.AddPolygon(new[] { P(7, 18), P(33, 18), P(33, 22), P(7, 22) });
+        path.AddPolygon(new[] { P(18, 7), P(22, 7), P(22, 33), P(18, 33) });
+        path.AddPolygon(new[] { P(1, 20), P(9, 13), P(9, 27) });
+        path.AddPolygon(new[] { P(39, 20), P(31, 13), P(31, 27) });
+        path.AddPolygon(new[] { P(20, 1), P(27, 9), P(13, 9) });
+        path.AddPolygon(new[] { P(20, 39), P(13, 31), P(27, 31) });
+        return path;
+    }
+
+    private static GraphicsPath ArrowEdgeOf(GraphicsPath arrow)
+    {
+        var edge = (GraphicsPath)arrow.Clone();
+        using var pen = new Pen(Color.White, 2 * ArrowEdge) { LineJoin = LineJoin.Round };
+        edge.Widen(pen);
+        edge.FillMode = FillMode.Winding;
+        return edge;
     }
 
     private Rectangle ToClient(PixelRect r) =>
