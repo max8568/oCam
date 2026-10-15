@@ -325,7 +325,7 @@ public class ControlBarTests
         }
     });
 
-    private const string ManageSizes = "新增或刪除自訂尺寸…";
+    private const string ManageSizes = "自訂尺寸…";
 
     [Fact]
     public void Settings_from_the_old_place_are_used_and_then_saved_in_the_new_one() => Sta.Run(async () =>

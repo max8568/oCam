@@ -366,7 +366,7 @@ internal sealed class ControlBarForm : PillBarWindow
                 menu.Items.Add(SizeItem(custom.MenuText, custom.Size));
             menu.Items.Add(new ToolStripSeparator());
         }
-        var manage = new ToolStripMenuItem("新增或刪除自訂尺寸…");
+        var manage = new ToolStripMenuItem("自訂尺寸…");
         manage.Click += (_, _) => BeginInvoke(OpenCustomSizes); // once the menu has closed
         menu.Items.Add(manage);
         return menu;
