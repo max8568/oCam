@@ -63,6 +63,15 @@ internal static class TestNative
             SendMessage(hwnd, WM_CHAR, c, IntPtr.Zero);
     }
 
+    private const uint WM_MOUSEWHEEL = 0x020A;
+
+    /// <summary>One notch of the mouse wheel towards the user (scrolling down) over a point of the window's client area.</summary>
+    public static void WheelDown(Control control, Point client)
+    {
+        var screen = control.PointToScreen(client);
+        SendMessage(control.Handle, WM_MOUSEWHEEL, (IntPtr)(-120 << 16), (IntPtr)((screen.Y << 16) | (screen.X & 0xFFFF)));
+    }
+
     private const uint WM_KEYDOWN = 0x0100;
 
     /// <summary>A key press sent to the window, without touching the real keyboard.</summary>

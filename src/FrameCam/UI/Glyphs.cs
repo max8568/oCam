@@ -2,7 +2,7 @@ using System.Drawing.Drawing2D;
 
 namespace FrameCam.UI;
 
-internal enum Glyph { Record, Stop, Camera, Size, PickWindow, Folder, Sliders, Close, Grip }
+internal enum Glyph { Record, Stop, Camera, Size, PickWindow, Folder, Sliders, Help, Close, Grip }
 
 /// <summary>
 /// The button icons, drawn as lines on a 24 × 24 grid and scaled to the box, so they stay sharp at any
@@ -66,6 +66,17 @@ internal static class Glyphs
                 g.DrawLine(pen, 11, 16.5f, 20, 16.5f);
                 g.DrawEllipse(pen, 13, 5.5f, 4, 4);
                 g.DrawEllipse(pen, 7, 14.5f, 4, 4);
+                break;
+            case Glyph.Help:
+                g.DrawEllipse(pen, 3, 3, 18, 18);
+                using (var hook = new GraphicsPath())
+                {
+                    hook.AddArc(9.4f, 6.6f, 5.2f, 5.2f, 180, 225);
+                    hook.AddLine(13.84f, 11.04f, 12, 12.4f);
+                    hook.AddLine(12, 12.4f, 12, 13.6f);
+                    g.DrawPath(pen, hook);
+                }
+                g.FillEllipse(brush, 10.9f, 15.6f, 2.2f, 2.2f);
                 break;
             case Glyph.Close:
                 g.DrawLine(pen, 6.5f, 6.5f, 17.5f, 17.5f);

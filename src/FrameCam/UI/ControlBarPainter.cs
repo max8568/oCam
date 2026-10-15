@@ -47,6 +47,7 @@ internal static class ControlBarPainter
         [BarItem.Pick] = Glyph.PickWindow,
         [BarItem.Folder] = Glyph.Folder,
         [BarItem.Settings] = Glyph.Sliders,
+        [BarItem.Help] = Glyph.Help,
         [BarItem.Close] = Glyph.Close,
     };
 

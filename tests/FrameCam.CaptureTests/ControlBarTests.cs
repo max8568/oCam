@@ -141,6 +141,35 @@ public class ControlBarTests
     });
 
     [Fact]
+    public void Clicking_the_help_icon_opens_the_manual_with_the_hotkeys_paused() => Sta.Run(async () =>
+    {
+        var bar = new ControlBarForm(NewSettingsFile());
+        try
+        {
+            bar.Show();
+            await Task.Delay(300);
+            bool opened = false, keyFree = false;
+            SynchronizationContext.Current!.Post(async _ =>
+            {
+                await Task.Delay(300);
+                var dialog = Application.OpenForms.OfType<HelpForm>().SingleOrDefault();
+                opened = dialog is not null;
+                keyFree = CanRegister(RecordKey); // otherwise the record key could record the manual
+                dialog?.Close();
+            }, null);
+            TestNative.Click(bar.Handle, Center(bar.BarLayout[BarItem.Help])); // returns when the dialog has closed
+
+            Assert.True(opened);
+            Assert.True(keyFree);
+            Assert.False(CanRegister(RecordKey)); // the bar has it again
+        }
+        finally
+        {
+            bar.Close();
+        }
+    });
+
+    [Fact]
     public void Clicking_the_close_icon_ends_the_program() => Sta.Run(async () =>
     {
         var bar = new ControlBarForm(NewSettingsFile());

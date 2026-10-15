@@ -104,6 +104,7 @@ internal sealed class ControlBarForm : PillBarWindow
             case BarItem.Pick: PickWindow(); break;
             case BarItem.Folder: OpenFolder(); break;
             case BarItem.Settings: OpenSettings(); break;
+            case BarItem.Help: OpenHelp(); break;
             case BarItem.Close: Close(); break;
         }
     }
@@ -115,6 +116,7 @@ internal sealed class ControlBarForm : PillBarWindow
         BarItem.Pick => _pickHotkeyFailed ? "選視窗" : $"選視窗 ({_settings.PickHotkey})",
         BarItem.Folder => "開啟存檔資料夾",
         BarItem.Settings => "設定",
+        BarItem.Help => "操作說明",
         BarItem.Close => "結束 FrameCam",
         _ => "",
     };
@@ -366,6 +368,20 @@ internal sealed class ControlBarForm : PillBarWindow
                 return;
             _settings = dialog.ToSettings(_settings);
             SaveSettings();
+        }
+        finally
+        {
+            RegisterHotkeys();
+        }
+    }
+
+    private void OpenHelp()
+    {
+        _hotkeys.UnregisterAll(); // otherwise F2 could start a recording with the manual in it
+        try
+        {
+            using var dialog = new HelpForm();
+            dialog.ShowDialog(this);
         }
         finally
         {

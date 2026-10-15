@@ -22,6 +22,16 @@ public class ControlBarLayoutTests
     }
 
     [Fact]
+    public void The_help_button_comes_after_settings_and_the_line_before_the_close_button()
+    {
+        var layout = ControlBarLayout.Compute(1f, 92);
+
+        Assert.Equal(layout[BarItem.Settings].Right + 4, layout[BarItem.Help].Left);
+        float line = layout.Separators[^1];
+        Assert.True(layout[BarItem.Help].Right < line && line < layout[BarItem.Close].Left);
+    }
+
+    [Fact]
     public void Bar_is_48_pixels_high_with_a_see_through_margin_for_its_shadow()
     {
         var layout = ControlBarLayout.Compute(1f, 92);
