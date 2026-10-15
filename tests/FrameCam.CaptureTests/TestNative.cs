@@ -59,6 +59,12 @@ internal static class TestNative
     public static void KeyDown(IntPtr hwnd, Keys key) => SendMessage(hwnd, WM_KEYDOWN, (IntPtr)(int)key, IntPtr.Zero);
 
     [DllImport("user32.dll")]
+    private static extern int GetWindowLong(IntPtr hwnd, int index);
+
+    /// <summary>Whether the window stays above windows that are not "always on top" (WS_EX_TOPMOST).</summary>
+    public static bool IsTopmost(IntPtr hwnd) => (GetWindowLong(hwnd, -20) & 0x8) != 0;
+
+    [DllImport("user32.dll")]
     [return: MarshalAs(UnmanagedType.Bool)]
     private static extern bool GetWindowDisplayAffinity(IntPtr hwnd, out uint affinity);
 

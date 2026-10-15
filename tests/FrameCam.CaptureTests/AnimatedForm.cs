@@ -1,7 +1,7 @@
 namespace FrameCam.CaptureTests;
 
 /// <summary>A window that repaints in a new color on every timer tick, so the screen changes on about every refresh.</summary>
-internal sealed class AnimatedForm : Form
+internal sealed class AnimatedForm : OnTopForm
 {
     private readonly System.Windows.Forms.Timer _timer = new() { Interval = 1 };
     private int _tick;
@@ -10,7 +10,6 @@ internal sealed class AnimatedForm : Form
     {
         FormBorderStyle = FormBorderStyle.None;
         ShowInTaskbar = false;
-        TopMost = true;
         StartPosition = FormStartPosition.Manual;
         AutoScaleMode = AutoScaleMode.None;
         DoubleBuffered = true;

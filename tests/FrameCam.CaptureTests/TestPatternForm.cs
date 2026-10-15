@@ -7,7 +7,7 @@ namespace FrameCam.CaptureTests;
 /// the region is gray, and an 8-pixel ring just outside the region is black. A capture shifted by one pixel
 /// in any direction puts gray or black into its outer ring.
 /// </summary>
-internal sealed class TestPatternForm : Form
+internal sealed class TestPatternForm : OnTopForm
 {
     public const int BlackMargin = 8;
     public static readonly Color Inside = Color.FromArgb(128, 128, 128);
@@ -19,7 +19,6 @@ internal sealed class TestPatternForm : Form
         _region = region;
         FormBorderStyle = FormBorderStyle.None;
         ShowInTaskbar = false;
-        TopMost = true;
         StartPosition = FormStartPosition.Manual;
         AutoScaleMode = AutoScaleMode.None;
         BackColor = Color.Black;

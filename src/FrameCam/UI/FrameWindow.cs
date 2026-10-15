@@ -43,7 +43,6 @@ internal sealed class FrameWindow : Form
     {
         FormBorderStyle = FormBorderStyle.None;
         ShowInTaskbar = false;
-        TopMost = true;
         StartPosition = FormStartPosition.Manual;
         AutoScaleMode = AutoScaleMode.None;
         DoubleBuffered = true;
@@ -136,6 +135,9 @@ internal sealed class FrameWindow : Form
         {
             var cp = base.CreateParams;
             cp.ExStyle |= NativeMethods.WS_EX_TOOLWINDOW;
+            // Always on top through the style: the TopMost property set before the window exists only took
+            // effect when another FrameCam window happened to be in front.
+            cp.ExStyle |= NativeMethods.WS_EX_TOPMOST;
             return cp;
         }
     }

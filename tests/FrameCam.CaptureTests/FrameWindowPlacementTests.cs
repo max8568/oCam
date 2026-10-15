@@ -63,4 +63,15 @@ public class FrameWindowPlacementTests
         SHQueryUserNotificationState(out int shown);
         Assert.Equal(before, shown);
     });
+
+    [Fact]
+    public void The_frame_is_on_top_even_when_FrameCam_has_no_window_in_front() => Sta.Run(async () =>
+    {
+        var monitor = Screens.At(new PixelPoint(0, 0));
+        using var frame = new FrameWindow(new PixelRect(monitor.Bounds.Left + 300, monitor.Bounds.Top + 200, 640, 400), monitor);
+        frame.Show(); // shows without taking the keyboard, so nothing of FrameCam is the active window
+        await Task.Delay(300);
+
+        Assert.True(TestNative.IsTopmost(frame.Handle));
+    });
 }

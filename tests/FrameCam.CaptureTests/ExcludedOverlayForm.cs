@@ -3,13 +3,12 @@ using FrameCam.Native;
 namespace FrameCam.CaptureTests;
 
 /// <summary>A red window marked "exclude from capture": it must never appear in a recording or screenshot.</summary>
-internal sealed class ExcludedOverlayForm : Form
+internal sealed class ExcludedOverlayForm : OnTopForm
 {
     public ExcludedOverlayForm(Rectangle bounds)
     {
         FormBorderStyle = FormBorderStyle.None;
         ShowInTaskbar = false;
-        TopMost = true;
         StartPosition = FormStartPosition.Manual;
         AutoScaleMode = AutoScaleMode.None;
         BackColor = Color.Red;

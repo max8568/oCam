@@ -78,9 +78,9 @@ public class FrameWindowRepaintTests
         // mouse, while another thread samples it.
         var monitor = Screens.At(new PixelPoint(0, 0)); // the primary monitor
         var start = new PixelRect(monitor.Bounds.Left + 400, monitor.Bounds.Top + 250, 700, 400);
-        using var backdrop = new Form
+        using var backdrop = new OnTopForm
         {
-            FormBorderStyle = FormBorderStyle.None, ShowInTaskbar = false, TopMost = true, StartPosition = FormStartPosition.Manual,
+            FormBorderStyle = FormBorderStyle.None, ShowInTaskbar = false, StartPosition = FormStartPosition.Manual,
             AutoScaleMode = AutoScaleMode.None, BackColor = Color.FromArgb(128, 128, 128),
             Bounds = Rectangle.FromLTRB(start.Left - 300, start.Top - 20, start.Right + 20, start.Bottom + 20),
         };

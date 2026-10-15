@@ -301,6 +301,49 @@ public class ControlBarTests
     });
 
     [Fact]
+    public void The_bar_stays_on_top_of_other_windows() => Sta.Run(async () =>
+    {
+        var bar = new ControlBarForm(NewSettingsFile());
+        try
+        {
+            bar.Show();
+            await Task.Delay(300);
+            Assert.True(TestNative.IsTopmost(bar.Handle), "after opening");
+
+            // A window the bar owns that stops being on top takes the bar with it; check after each one.
+            var menu = bar.BuildSizeMenu();
+            menu.Show(bar, new Point(20, 40));
+            await Task.Delay(300);
+            menu.Close();
+            menu.Dispose();
+            await Task.Delay(300);
+            Assert.True(TestNative.IsTopmost(bar.Handle), "after the size menu");
+
+            bar.BeginInvoke(bar.OpenSettings);
+            await Task.Delay(500);
+            Application.OpenForms.OfType<SettingsForm>().Single().Close();
+            await Task.Delay(300);
+            Assert.True(TestNative.IsTopmost(bar.Handle), "after the settings dialog");
+
+            bar.BeginInvoke(bar.OpenCustomSizes);
+            await Task.Delay(500);
+            Application.OpenForms.OfType<CustomSizesForm>().Single().Close();
+            await Task.Delay(300);
+            Assert.True(TestNative.IsTopmost(bar.Handle), "after the custom sizes dialog");
+
+            bar.BeginInvoke(() => { using var picker = new WindowPicker(); picker.ShowDialog(bar); });
+            await Task.Delay(500);
+            Application.OpenForms.OfType<WindowPicker>().Single().Close();
+            await Task.Delay(300);
+            Assert.True(TestNative.IsTopmost(bar.Handle), "after picking a window");
+        }
+        finally
+        {
+            bar.Close();
+        }
+    });
+
+    [Fact]
     public void Size_menu_lists_saved_custom_sizes_under_the_presets() => Sta.Run(async () =>
     {
         var bar = new ControlBarForm(NewSettingsFile(new CustomSize("直播", 1600, 900), new CustomSize("", 800, 600)));

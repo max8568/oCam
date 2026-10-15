@@ -18,7 +18,6 @@ internal abstract class PillBarWindow : LayeredWindow
 
     protected PillBarWindow()
     {
-        TopMost = true;
         _statusBubble.Owner = this;
         _tipBubble.Owner = this;
         _tipTimer.Tick += (_, _) =>
@@ -38,6 +37,9 @@ internal abstract class PillBarWindow : LayeredWindow
         {
             var cp = base.CreateParams;
             cp.ExStyle |= NativeMethods.WS_EX_TOOLWINDOW; // no taskbar button, like the tool window it replaces
+            // Always on top through the style: the TopMost property set before the window exists does not
+            // make it so, and the bar went behind other programs.
+            cp.ExStyle |= NativeMethods.WS_EX_TOPMOST;
             return cp;
         }
     }
