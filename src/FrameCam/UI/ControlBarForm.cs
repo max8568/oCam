@@ -255,7 +255,7 @@ internal sealed class ControlBarForm : PillBarWindow
     /// </summary>
     internal ContextMenuStrip BuildSizeMenu()
     {
-        var menu = new ContextMenuStrip();
+        var menu = new LightMenu();
         var monitor = _frame.Monitor;
         ToolStripMenuItem SizeItem(string text, PixelSize size)
         {

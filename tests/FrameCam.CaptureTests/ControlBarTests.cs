@@ -319,6 +319,36 @@ public class ControlBarTests
     });
 
     [Fact]
+    public void The_size_menu_is_white_with_round_corners_and_a_light_gray_row_under_the_mouse() => Sta.Run(async () =>
+    {
+        var bar = new ControlBarForm(NewSettingsFile());
+        try
+        {
+            bar.Show();
+            await Task.Delay(300);
+            using var menu = bar.BuildSizeMenu();
+            menu.Show(bar, new Point(20, 40));
+            await Task.Delay(300);
+            var items = menu.Items.OfType<ToolStripMenuItem>().Where(i => i.Enabled).ToArray();
+            items[0].Select();
+            await Task.Delay(200);
+
+            var hovered = menu.RectangleToScreen(items[0].Bounds);
+            var other = menu.RectangleToScreen(items[1].Bounds);
+            int x = hovered.Right - 16; // right of the text, which is short
+            Assert.Equal(Palette.Hover.ToArgb(), ScreenPixel(x, hovered.Top + hovered.Height / 2).ToArgb());
+            Assert.Equal(Palette.Surface.ToArgb(), ScreenPixel(x, other.Top + other.Height / 2).ToArgb());
+            Assert.Equal(0, NativeMethods.DwmGetWindowAttribute(menu.Handle, NativeMethods.DWMWA_WINDOW_CORNER_PREFERENCE, out int corners, sizeof(int)));
+            Assert.Equal(NativeMethods.DWMWCP_ROUND, corners);
+            menu.Close();
+        }
+        finally
+        {
+            bar.Close();
+        }
+    });
+
+    [Fact]
     public void The_bar_stays_on_top_of_other_windows() => Sta.Run(async () =>
     {
         var bar = new ControlBarForm(NewSettingsFile());
@@ -513,6 +543,14 @@ public class ControlBarTests
     });
 
     private static Point Center(RectangleF r) => new((int)(r.Left + r.Width / 2), (int)(r.Top + r.Height / 2));
+
+    private static Color ScreenPixel(int x, int y)
+    {
+        using var bmp = new Bitmap(1, 1);
+        using (var g = Graphics.FromImage(bmp))
+            g.CopyFromScreen(x, y, 0, 0, bmp.Size);
+        return bmp.GetPixel(0, 0);
+    }
 
     private static bool CanRegister(Keys keys)
     {
