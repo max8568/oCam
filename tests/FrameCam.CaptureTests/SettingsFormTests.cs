@@ -38,4 +38,55 @@ public class SettingsFormTests
         Assert.DoesNotContain(All<Label>(dialog), l => l.Visible && l.Text == FailedMessage);
         Assert.Equal("F9", dialog.ToSettings(new AppSettings()).ScreenshotHotkey);
     });
+
+    [Theory]
+    [InlineData("存檔資料夾")]
+    [InlineData("錄影快捷鍵")]
+    [InlineData("截圖快捷鍵")]
+    [InlineData("每秒格數")]
+    public void Each_name_is_on_the_left_of_its_field(string name) => Sta.Run(async () =>
+    {
+        using var dialog = await Show(new AppSettings(), false, false);
+        var label = All<Label>(dialog).Single(l => l.Text == name);
+        var field = Field(dialog, name);
+
+        Assert.True(label.Right <= field.Left, $"{name}: the name ends at {label.Right}, the field starts at {field.Left}");
+        Assert.InRange(label.Top + label.Height / 2, field.Top, field.Bottom);
+    });
+
+    [Fact]
+    public void Fields_line_up_on_their_left_edge() => Sta.Run(async () =>
+    {
+        using var dialog = await Show(new AppSettings(), false, false);
+        var lefts = new[] { "存檔資料夾", "錄影快捷鍵", "截圖快捷鍵" }.Select(n => Field(dialog, n).Left).Distinct();
+        Assert.Single(lefts);
+    });
+
+    [Fact]
+    public void A_failure_note_sits_under_its_field_without_covering_the_next_one() => Sta.Run(async () =>
+    {
+        using var dialog = await Show(new AppSettings(), recordHotkeyFailed: true, screenshotHotkeyFailed: true);
+        var notes = All<Label>(dialog).Where(l => l.Visible && l.Text == FailedMessage).OrderBy(l => l.Top).ToArray();
+        var record = Field(dialog, "錄影快捷鍵");
+        var screenshot = Field(dialog, "截圖快捷鍵");
+        var fps = Field(dialog, "每秒格數");
+
+        Assert.Equal(2, notes.Length);
+        Assert.Equal(record.Left, notes[0].Left - dialog.LogicalToDeviceUnits(12));
+        Assert.InRange(notes[0].Top, record.Bottom, screenshot.Top - notes[0].Height);
+        Assert.InRange(notes[1].Top, screenshot.Bottom, fps.Top - notes[1].Height);
+    });
+
+    private static async Task<SettingsForm> Show(AppSettings settings, bool recordHotkeyFailed, bool screenshotHotkeyFailed)
+    {
+        var dialog = new SettingsForm(settings, recordHotkeyFailed, screenshotHotkeyFailed);
+        dialog.Show();
+        await Task.Delay(200);
+        return dialog;
+    }
+
+    /// <summary>The round field that holds the setting with this name.</summary>
+    private static Control Field(Control dialog, string name) => name == "每秒格數"
+        ? All<Button>(dialog).Single(b => b.Text == "30").Parent!
+        : All<TextBox>(dialog).Single(b => b.AccessibleName == name).Parent!;
 }

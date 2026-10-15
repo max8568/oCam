@@ -22,6 +22,7 @@ internal static class Palette
     public static readonly Color StopHover = Color.FromArgb(0xB9, 0x1C, 0x1C);
     public static readonly Color StopPressed = Color.FromArgb(0x99, 0x1B, 0x1B);
 
+    public static readonly Color Band = Color.FromArgb(0xF8, 0xFA, 0xFC); // a dialog's bottom bar
     public static readonly Color Field = Color.FromArgb(0xF1, 0xF5, 0xF9);
     public static readonly Color FieldButton = Color.FromArgb(0xE2, 0xE8, 0xF0);
     public static readonly Color FieldButtonHover = Color.FromArgb(0xCB, 0xD5, 0xE1);

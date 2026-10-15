@@ -4,13 +4,13 @@ namespace FrameCam.UI;
 
 /// <summary>
 /// The custom sizes dialog (spec 7.5): a row to add a size at the top, then the saved sizes, each with an X
-/// at its end that deletes it. Changes count right away; however the dialog is closed, the caller keeps
-/// <see cref="Sizes"/>.
+/// at its end that deletes it, and a gray bar at the bottom with the count and 完成. Changes count right away;
+/// however the dialog is closed, the caller keeps <see cref="Sizes"/>.
 /// </summary>
 internal sealed class CustomSizesForm : LightDialog
 {
     private const string NoneYet = "還沒有自訂尺寸";
-    private const int RowHeight = 34;
+    private const int RowHeight = 40;
     private const int SizeColumn = 104; // "8192 × 8192" fits
     private const int RemoveCenter = 16; // the X's center, from the row's right end
     private const int RemoveRadius = 12;
@@ -22,10 +22,11 @@ internal sealed class CustomSizesForm : LightDialog
         DrawMode = DrawMode.OwnerDrawFixed,
         IntegralHeight = false,
         ItemHeight = RowHeight,
-        BackColor = Palette.Field,
+        BackColor = Palette.Surface,
         AccessibleName = "已儲存的尺寸",
     };
-    private readonly Label _empty = new() { Text = NoneYet, TextAlign = ContentAlignment.MiddleCenter, ForeColor = Palette.Muted };
+    private readonly Label _empty = new() { Text = NoneYet, TextAlign = ContentAlignment.MiddleCenter, ForeColor = Palette.Muted, BackColor = Palette.Surface };
+    private readonly Label _count = new() { AutoSize = true, Location = new Point(22, 24), ForeColor = Palette.Muted };
     private readonly TextBox _label = new() { BorderStyle = BorderStyle.None, AccessibleName = "標籤" }; // no length limit: too long gets a message instead
     private readonly TextBox _width = new() { BorderStyle = BorderStyle.None, AccessibleName = "寬" };
     private readonly TextBox _height = new() { BorderStyle = BorderStyle.None, AccessibleName = "高" };
@@ -36,7 +37,7 @@ internal sealed class CustomSizesForm : LightDialog
 
     /// <param name="current">The region's size now, filled in as the size to add.</param>
     public CustomSizesForm(IReadOnlyList<CustomSize> sizes, PixelSize current)
-        : base("自訂尺寸", "FrameCam 自訂尺寸", new Size(460, 470))
+        : base("自訂尺寸", "FrameCam 自訂尺寸", new Size(460, 446))
     {
         _sizes = [.. sizes];
         SuspendLayout();
@@ -48,8 +49,8 @@ internal sealed class CustomSizesForm : LightDialog
         add.SetColors(Palette.Accent, Palette.AccentHover, Palette.AccentPressed, Color.White);
         add.Click += (_, _) => AddTyped();
 
-        var list = new FieldBox { Bounds = new Rectangle(22, 178, 416, 216), CornerRadius = 16 };
-        _list.Bounds = new Rectangle(6, 6, 404, 204); // inside the round corners
+        var list = new FieldBox { Bounds = new Rectangle(22, 150, 416, 212), CornerRadius = 12, Bordered = true, BackColor = Palette.Surface };
+        _list.Bounds = new Rectangle(5, 5, 406, 202); // inside the round corners
         _empty.Bounds = _list.Bounds;
         list.Controls.Add(_empty);
         list.Controls.Add(_list);
@@ -72,8 +73,15 @@ internal sealed class CustomSizesForm : LightDialog
         _list.GotFocus += (_, _) => _list.Invalidate(); // the selected row shows only while the list has the focus
         _list.LostFocus += (_, _) => _list.Invalidate();
 
-        var done = new RoundButton { Text = "完成", DialogResult = DialogResult.OK, Bounds = new Rectangle(354, 412, 84, 36) };
-        done.SetColors(Palette.Field, Palette.Pressed, Palette.FieldButtonHover, Palette.Ink);
+        var done = new RoundButton { Text = "完成", DialogResult = DialogResult.OK, Bounds = new Rectangle(354, 14, 84, 36) };
+        done.SetColors(Palette.Accent, Palette.AccentHover, Palette.AccentPressed, Color.White);
+        var bar = new Panel { Bounds = new Rectangle(0, 382, 460, 64), BackColor = Palette.Band };
+        bar.Paint += (_, e) =>
+        {
+            using var line = new Pen(Palette.Border, 1);
+            e.Graphics.DrawLine(line, 0, 0, bar.Width, 0);
+        };
+        bar.Controls.AddRange(new Control[] { _count, done });
         AcceptButton = add; // Enter in the boxes adds what was typed
         CancelButton = done;
 
@@ -84,8 +92,7 @@ internal sealed class CustomSizesForm : LightDialog
             times,
             Caption("高", 304, 58), FieldBox.Around(new Rectangle(292, 80, 76, 38), _height),
             add, _message,
-            Caption("已儲存的尺寸", 34, 156), list,
-            done, CloseButton(460, DialogResult.Cancel),
+            list, bar, CloseButton(460, DialogResult.Cancel),
         });
         ShowSizes(selected: -1);
         ResumeLayout(false);
@@ -143,6 +150,7 @@ internal sealed class CustomSizesForm : LightDialog
         _list.SelectedIndex = selected;
         _list.Visible = _sizes.Count > 0;
         _empty.Visible = _sizes.Count == 0;
+        _count.Text = $"已存 {_sizes.Count} 個，最多 {CustomSize.MaxCount} 個";
         _hoverRow = -1;
         _hoverRemove = false;
     }
@@ -183,13 +191,19 @@ internal sealed class CustomSizesForm : LightDialog
         if (e.Index < 0 || e.Index >= _list.Items.Count)
             return;
         var g = e.Graphics;
-        using (var back = new SolidBrush(Palette.Field))
+        using (var back = new SolidBrush(Palette.Surface))
             g.FillRectangle(back, e.Bounds);
+        if (e.Index < _list.Items.Count - 1)
+        {
+            using var divider = new Pen(Palette.Border, 1);
+            int y = e.Bounds.Bottom - 1;
+            g.DrawLine(divider, e.Bounds.Left + LogicalToDeviceUnits(8), y, e.Bounds.Right - LogicalToDeviceUnits(8), y);
+        }
         g.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
         bool selected = (e.State & DrawItemState.Selected) != 0 && _list.Focused;
         if (e.Index == _hoverRow || selected)
         {
-            using var row = new SolidBrush(Palette.Surface);
+            using var row = new SolidBrush(Palette.Hover);
             using var shape = Shapes.Rounded(RectangleF.Inflate(e.Bounds, 0, -2), LogicalToDeviceUnits(10));
             g.FillPath(row, shape);
         }

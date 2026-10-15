@@ -160,6 +160,35 @@ public class CustomSizesFormTests
         Assert.Equal(1, list.SelectedIndex); // the next one, so pressing again keeps deleting
     });
 
+    [Fact]
+    public void The_bottom_bar_says_how_many_are_saved() => Sta.Run(async () =>
+    {
+        using var dialog = await Show([new CustomSize("a", 800, 600), new CustomSize("b", 640, 480)]);
+        Assert.Contains(All<Label>(dialog), l => l.Visible && l.Text == "已存 2 個，最多 20 個");
+
+        Type(dialog, "c", "320", "240");
+        Button(dialog, "新增").PerformClick();
+        Assert.Contains(All<Label>(dialog), l => l.Visible && l.Text == "已存 3 個，最多 20 個");
+
+        List(dialog).SelectedIndex = 0;
+        TestNative.KeyDown(List(dialog).Handle, Keys.Delete);
+        Assert.Contains(All<Label>(dialog), l => l.Visible && l.Text == "已存 2 個，最多 20 個");
+    });
+
+    [Fact]
+    public void Done_is_on_the_same_line_as_the_count_under_the_list() => Sta.Run(async () =>
+    {
+        using var dialog = await Show([]);
+        var count = All<Label>(dialog).Single(l => l.Text.StartsWith("已存 "));
+        var done = Button(dialog, "完成");
+        var countRect = dialog.RectangleToClient(count.RectangleToScreen(count.ClientRectangle));
+        var doneRect = dialog.RectangleToClient(done.RectangleToScreen(done.ClientRectangle));
+
+        Assert.InRange(countRect.Top + countRect.Height / 2, doneRect.Top, doneRect.Bottom);
+        Assert.True(countRect.Top > List(dialog).Parent!.Bottom, "the count is under the list");
+        Assert.True(countRect.Right < doneRect.Left, "the count is on the left of 完成");
+    });
+
     private static async Task<CustomSizesForm> Show(CustomSize[] sizes)
     {
         var dialog = new CustomSizesForm(sizes, Current);

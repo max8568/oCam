@@ -5,7 +5,7 @@ namespace FrameCam.UI;
 
 /// <summary>
 /// A light-gray area that holds a borderless text box or a list (design 21): fully round ends unless a corner
-/// radius is set, red-tinted with a red outline when Failed.
+/// radius is set, red-tinted with a red outline when Failed. Bordered draws a thin gray outline instead.
 /// </summary>
 internal sealed class FieldBox : Panel
 {
@@ -20,6 +20,9 @@ internal sealed class FieldBox : Panel
     /// <summary>Corner radius at 100 % scale; null for fully round ends.</summary>
     [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
     public int? CornerRadius { get; set; }
+
+    [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
+    public bool Bordered { get; set; }
 
     [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
     public bool Failed
@@ -63,9 +66,9 @@ internal sealed class FieldBox : Panel
         using (var fill = new SolidBrush(BackColor))
         using (var shape = Shapes.Rounded(box, radius))
             g.FillPath(fill, shape);
-        if (!_failed)
+        if (!_failed && !Bordered)
             return;
-        using var pen = new Pen(Palette.ErrorBorder, 1);
+        using var pen = new Pen(_failed ? Palette.ErrorBorder : Palette.Border, 1);
         using var outline = Shapes.Rounded(RectangleF.Inflate(box, -0.5f, -0.5f), radius - 0.5f);
         g.DrawPath(pen, outline);
     }
