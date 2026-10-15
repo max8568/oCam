@@ -161,6 +161,21 @@ public class CustomSizesFormTests
     });
 
     [Fact]
+    public void The_list_has_a_title_above_it_clear_of_the_message() => Sta.Run(async () =>
+    {
+        using var dialog = await Show([]);
+        Type(dialog, "x", "801", "600");
+        Button(dialog, "新增").PerformClick(); // shows the message between the boxes and the list
+        var title = All<Label>(dialog).Single(l => l.Text == "已儲存的尺寸");
+        var message = All<Label>(dialog).Single(l => l.Visible && l.Text == "寬和高要是 32 到 8192 之間的偶數");
+        var list = List(dialog).Parent!;
+
+        Assert.True(title.Visible);
+        Assert.True(title.Bottom <= list.Top, "the title is above the list");
+        Assert.True(message.Bottom <= title.Top, "the message does not cover the title");
+    });
+
+    [Fact]
     public void The_bottom_bar_says_how_many_are_saved() => Sta.Run(async () =>
     {
         using var dialog = await Show([new CustomSize("a", 800, 600), new CustomSize("b", 640, 480)]);

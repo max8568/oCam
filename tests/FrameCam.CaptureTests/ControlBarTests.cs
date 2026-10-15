@@ -289,7 +289,7 @@ public class ControlBarTests
             await Task.Delay(300);
             using var menu = bar.BuildSizeMenu();
             Assert.Equal(
-                ["1920 × 1080", "1280 × 720", "854 × 480", "640 × 360", "整個螢幕", "", "自訂尺寸", "直播（1600 × 900）", "800 × 600", "", ManageSizes],
+                ["1920 × 1080", "1280 × 720", "854 × 480", "640 × 360", "整個螢幕", "", "直播（1600 × 900）", "800 × 600", "", ManageSizes],
                 menu.Items.Cast<ToolStripItem>().Select(i => i.Text ?? ""));
         }
         finally

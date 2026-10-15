@@ -37,7 +37,7 @@ internal sealed class CustomSizesForm : LightDialog
 
     /// <param name="current">The region's size now, filled in as the size to add.</param>
     public CustomSizesForm(IReadOnlyList<CustomSize> sizes, PixelSize current)
-        : base("自訂尺寸", "FrameCam 自訂尺寸", new Size(460, 446))
+        : base("自訂尺寸", "FrameCam 自訂尺寸", new Size(460, 470))
     {
         _sizes = [.. sizes];
         SuspendLayout();
@@ -49,7 +49,7 @@ internal sealed class CustomSizesForm : LightDialog
         add.SetColors(Palette.Accent, Palette.AccentHover, Palette.AccentPressed, Color.White);
         add.Click += (_, _) => AddTyped();
 
-        var list = new FieldBox { Bounds = new Rectangle(22, 150, 416, 212), CornerRadius = 12, Bordered = true, BackColor = Palette.Surface };
+        var list = new FieldBox { Bounds = new Rectangle(22, 174, 416, 212), CornerRadius = 12, Bordered = true, BackColor = Palette.Surface };
         _list.Bounds = new Rectangle(5, 5, 406, 202); // inside the round corners
         _empty.Bounds = _list.Bounds;
         list.Controls.Add(_empty);
@@ -75,7 +75,7 @@ internal sealed class CustomSizesForm : LightDialog
 
         var done = new RoundButton { Text = "完成", DialogResult = DialogResult.OK, Bounds = new Rectangle(354, 14, 84, 36) };
         done.SetColors(Palette.Accent, Palette.AccentHover, Palette.AccentPressed, Color.White);
-        var bar = new Panel { Bounds = new Rectangle(0, 382, 460, 64), BackColor = Palette.Band };
+        var bar = new Panel { Bounds = new Rectangle(0, 406, 460, 64), BackColor = Palette.Band };
         bar.Paint += (_, e) =>
         {
             using var line = new Pen(Palette.Border, 1);
@@ -92,7 +92,7 @@ internal sealed class CustomSizesForm : LightDialog
             times,
             Caption("高", 304, 58), FieldBox.Around(new Rectangle(292, 80, 76, 38), _height),
             add, _message,
-            list, bar, CloseButton(460, DialogResult.Cancel),
+            Caption("已儲存的尺寸", 34, 152), list, bar, CloseButton(460, DialogResult.Cancel),
         });
         ShowSizes(selected: -1);
         ResumeLayout(false);

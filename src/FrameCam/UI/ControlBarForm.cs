@@ -271,7 +271,6 @@ internal sealed class ControlBarForm : PillBarWindow
         menu.Items.Add(new ToolStripSeparator());
         if (_settings.CustomSizes.Count > 0)
         {
-            menu.Items.Add(new ToolStripLabel("自訂尺寸") { ForeColor = Palette.Muted });
             foreach (var custom in _settings.CustomSizes)
                 menu.Items.Add(SizeItem(custom.MenuText, custom.Size));
             menu.Items.Add(new ToolStripSeparator());
