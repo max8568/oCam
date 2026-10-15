@@ -58,8 +58,11 @@ internal sealed class FrameWindow : Form
     /// <summary>Raised on every drag step and keyboard nudge; the magnifier shows for it. Not raised when dragging by the arrow in the middle.</summary>
     public event EventHandler<AdjustingEventArgs>? Adjusting;
 
-    /// <summary>Raised when a drag ends, and right after each keyboard nudge.</summary>
+    /// <summary>Raised when a drag ends; the magnifier hides right away.</summary>
     public event EventHandler? AdjustEnded;
+
+    /// <summary>Raised right after each keyboard nudge; the magnifier hides a moment later unless another nudge follows.</summary>
+    public event EventHandler? Nudged;
 
     /// <summary>Raised when Windows reports a DPI change for this window: scaling changed, or it moved to a monitor with another scale.</summary>
     public event EventHandler? ScaleChanged;
@@ -139,7 +142,7 @@ internal sealed class FrameWindow : Form
         SetRegion(region, _monitor);
         var focus = MagnifierMath.FocusPoint(_region, handle, _region.Center);
         Adjusting?.Invoke(this, new AdjustingEventArgs(focus, focus));
-        AdjustEnded?.Invoke(this, EventArgs.Empty);
+        Nudged?.Invoke(this, EventArgs.Empty);
         return true;
     }
 
@@ -243,7 +246,7 @@ internal sealed class FrameWindow : Form
             Adjusting?.Invoke(this, new AdjustingEventArgs(MagnifierMath.FocusPoint(_region, handle, cursor), cursor));
     }
 
-    /// <summary>Ends a drag; the magnifier hides a moment later.</summary>
+    /// <summary>Ends a drag; the magnifier hides right away.</summary>
     internal void EndDrag()
     {
         if (_dragHandle is null)

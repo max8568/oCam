@@ -14,7 +14,7 @@ namespace FrameCam.UI;
 internal sealed class MagnifierWindow : Form
 {
     private const int InfoHeight = 40; // at 100% scaling
-    private const int HideDelayMs = 1500;
+    private const int HideDelayMs = 1500; // after the last arrow nudge; a drag hides it as soon as it ends
 
     private readonly FrameWindow _frame;
     private readonly System.Windows.Forms.Timer _hideTimer = new() { Interval = HideDelayMs };
@@ -40,6 +40,11 @@ internal sealed class MagnifierWindow : Form
         };
         frame.Adjusting += (_, e) => ShowFor(e);
         frame.AdjustEnded += (_, _) =>
+        {
+            _hideTimer.Stop();
+            Hide();
+        };
+        frame.Nudged += (_, _) =>
         {
             _hideTimer.Stop();
             _hideTimer.Start();
