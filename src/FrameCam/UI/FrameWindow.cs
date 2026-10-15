@@ -36,6 +36,7 @@ internal sealed class FrameWindow : Form
     private bool _dragMagnifies;
     private PixelPoint _dragStartCursor;
     private PixelRect _dragStartRegion;
+    private Point _origin; // the window's top-left on screen
     private SnapTargets _dragSnap = SnapTargets.None;
 
     public FrameWindow(PixelRect region, MonitorInfo monitor)
@@ -261,9 +262,21 @@ internal sealed class FrameWindow : Form
         return new FrameLayout(_region, new PixelSize(text.Width + 12, text.Height + 6), _monitor.Bounds);
     }
 
+    /// <summary>
+    /// The window covers the monitor and stays put while the frame is dragged; only its shape changes. Moving it
+    /// on every drag step showed the far sides white or black for a moment. It leaves out one row the frame does
+    /// not reach, the bottom one, else the top one: Windows takes a window over the whole monitor for a
+    /// full-screen app, quiets notifications and drops the taskbar behind it.
+    /// </summary>
     private void ApplyLayout()
     {
-        Bounds = _layout.WindowBounds.ToRectangle();
+        var screen = _monitor.Bounds.ToRectangle();
+        if (_layout.WindowBounds.Bottom >= _monitor.Bounds.Bottom)
+            screen.Y += 1;
+        screen.Height -= 1;
+        if (Bounds != screen)
+            Bounds = screen; // when the frame goes to another monitor, or reaches the bottom row or leaves it
+        _origin = screen.Location;
         var shape = new Region(Rectangle.Empty);
         foreach (var r in _layout.Ring)
             shape.Union(ToClient(r));
@@ -295,7 +308,7 @@ internal sealed class FrameWindow : Form
     }
 
     private Rectangle ToClient(PixelRect r) =>
-        new(r.Left - _layout.WindowBounds.Left, r.Top - _layout.WindowBounds.Top, r.Width, r.Height);
+        new(r.Left - _origin.X, r.Top - _origin.Y, r.Width, r.Height);
 
     private static Cursor CursorFor(FrameHandle? handle) => handle switch
     {
