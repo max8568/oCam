@@ -9,6 +9,7 @@ internal static class Program
     private static void Main()
     {
         ApplicationConfiguration.Initialize();
-        Application.Run(new ControlBarForm(SettingsStore.DefaultPath));
+        // Settings live beside the exe so they travel with a copied FrameCam folder.
+        Application.Run(new ControlBarForm(SettingsStore.PathIn(AppContext.BaseDirectory), SettingsStore.OldPath));
     }
 }

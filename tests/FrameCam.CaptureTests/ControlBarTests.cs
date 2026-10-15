@@ -280,6 +280,27 @@ public class ControlBarTests
     private const string ManageSizes = "新增或刪除自訂尺寸…";
 
     [Fact]
+    public void Settings_from_the_old_place_are_used_and_then_saved_in_the_new_one() => Sta.Run(async () =>
+    {
+        string old = NewSettingsFile(new CustomSize("直播", 1600, 900));
+        string beside = Path.Combine(Directory.CreateTempSubdirectory("framecam 測試 exe ").FullName, "settings.json");
+        var bar = new ControlBarForm(beside, old);
+        try
+        {
+            bar.Show();
+            await Task.Delay(300);
+            using var menu = bar.BuildSizeMenu();
+            Assert.Contains(menu.Items.Cast<ToolStripItem>(), i => i.Text == "直播（1600 × 900）");
+        }
+        finally
+        {
+            bar.Close();
+        }
+
+        Assert.Equal([new CustomSize("直播", 1600, 900)], SettingsStore.Load(beside).Settings.CustomSizes);
+    });
+
+    [Fact]
     public void Size_menu_lists_saved_custom_sizes_under_the_presets() => Sta.Run(async () =>
     {
         var bar = new ControlBarForm(NewSettingsFile(new CustomSize("直播", 1600, 900), new CustomSize("", 800, 600)));

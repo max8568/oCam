@@ -36,16 +36,24 @@ public static class SettingsStore
         NumberHandling = JsonNumberHandling.AllowReadingFromString,
     };
 
-    public static string DefaultPath =>
+    /// <summary>settings.json in FrameCam's own folder, so the settings travel with a copied FrameCam folder.</summary>
+    public static string PathIn(string appFolder) => Path.Combine(appFolder, "settings.json");
+
+    /// <summary>Where earlier versions kept the settings; read once when there is no file beside the exe yet.</summary>
+    public static string OldPath =>
         Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "FrameCam", "settings.json");
 
     /// <summary>
-    /// Reads the settings. A missing file gives defaults and no error; an unreadable or invalid file gives
-    /// defaults and a message for the user. Unknown fields are ignored; missing or invalid ones get defaults.
-    /// An invalid file is first copied to settings.json.bad, because the next save overwrites it.
+    /// Reads the settings, from <paramref name="oldPath"/> when <paramref name="path"/> does not exist yet (the
+    /// next save writes to <paramref name="path"/>). A missing file gives defaults and no error; an unreadable
+    /// or invalid file gives defaults and a message for the user. Unknown fields are ignored; missing or
+    /// invalid ones get defaults. An invalid file is first copied to settings.json.bad, because the next save
+    /// overwrites it.
     /// </summary>
-    public static (AppSettings Settings, string? Error) Load(string path)
+    public static (AppSettings Settings, string? Error) Load(string path, string? oldPath = null)
     {
+        if (!File.Exists(path) && oldPath is not null && File.Exists(oldPath))
+            path = oldPath;
         if (!File.Exists(path))
             return (new AppSettings(), null);
         try
@@ -73,8 +81,15 @@ public static class SettingsStore
         }
     }
 
+    /// <summary>
+    /// Writes the settings. The default save folder is written blank, which loads as each person's own
+    /// Videos\FrameCam: the file may be shared with other people, and a path into this person's profile would
+    /// not work for them.
+    /// </summary>
     public static void Save(string path, AppSettings settings)
     {
+        if (string.Equals(Path.TrimEndingDirectorySeparator(settings.OutputFolder), OutputDirectory.Default, StringComparison.OrdinalIgnoreCase))
+            settings = settings with { OutputFolder = "" };
         Directory.CreateDirectory(Path.GetDirectoryName(path)!);
         File.WriteAllText(path, JsonSerializer.Serialize(settings, Json));
     }

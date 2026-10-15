@@ -132,4 +132,48 @@ public class SettingsStoreTests
         Assert.Null(error);
         Assert.Equal(new AppSettings { RecordHotkey = "F6" }, settings);
     }
+
+    [Fact]
+    public void Settings_sit_in_the_FrameCam_folder()
+    {
+        Assert.Equal(@"D:\Tools\FrameCam\settings.json", SettingsStore.PathIn(@"D:\Tools\FrameCam\"));
+    }
+
+    [Fact]
+    public void Without_a_file_beside_the_exe_the_old_file_is_read()
+    {
+        string old = WriteFile("""{ "RecordHotkey": "F3", "ScreenshotHotkey": "F4" }""");
+        var (settings, error) = SettingsStore.Load(NewPath(), old);
+        Assert.Null(error);
+        Assert.Equal("F3", settings.RecordHotkey);
+        Assert.Equal("F4", settings.ScreenshotHotkey);
+    }
+
+    [Fact]
+    public void The_file_beside_the_exe_wins_over_the_old_one()
+    {
+        string old = WriteFile("""{ "RecordHotkey": "F3" }""");
+        string beside = WriteFile("""{ "RecordHotkey": "F7" }""");
+        var (settings, _) = SettingsStore.Load(beside, old);
+        Assert.Equal("F7", settings.RecordHotkey);
+    }
+
+    [Fact]
+    public void The_default_save_folder_is_stored_as_blank_so_a_shared_file_fits_everyone()
+    {
+        string path = NewPath();
+        SettingsStore.Save(path, new AppSettings { OutputFolder = OutputDirectory.Default });
+
+        Assert.Contains("\"OutputFolder\": \"\"", File.ReadAllText(path));
+        Assert.Equal(OutputDirectory.Default, SettingsStore.Load(path).Settings.OutputFolder);
+    }
+
+    [Fact]
+    public void A_chosen_save_folder_is_stored_as_it_is()
+    {
+        string path = NewPath();
+        SettingsStore.Save(path, new AppSettings { OutputFolder = @"D:\錄影" });
+
+        Assert.Equal(@"D:\錄影", SettingsStore.Load(path).Settings.OutputFolder);
+    }
 }

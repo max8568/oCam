@@ -20,7 +20,7 @@
 
     dotnet run --project src/FrameCam
 
-影片和截圖預設存在「影片\FrameCam」，設定檔在 `%APPDATA%\FrameCam\settings.json`。設定檔讀不出來時會改用預設值，原本的檔案另存為 `settings.json.bad`。
+影片和截圖預設存在「影片\FrameCam」。設定檔是 exe 旁邊的 `settings.json`，把整個資料夾複製給別人時，快捷鍵和自訂尺寸會一起帶過去；存檔資料夾沒改過的話，每個人用的都是自己的「影片\FrameCam」。exe 所在的資料夾要能寫入，設定才存得起來。舊版放在 `%APPDATA%\FrameCam\settings.json` 的設定，第一次執行新版時會讀進來。設定檔讀不出來時會改用預設值，原本的檔案另存為 `settings.json.bad`。
 
 ## 已知限制
 

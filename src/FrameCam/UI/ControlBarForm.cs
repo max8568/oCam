@@ -31,10 +31,11 @@ internal sealed class ControlBarForm : PillBarWindow
     private bool _recordHotkeyFailed;
     private bool _screenshotHotkeyFailed;
 
-    public ControlBarForm(string settingsPath)
+    /// <param name="oldSettingsPath">Read when <paramref name="settingsPath"/> does not exist yet; saving always goes to <paramref name="settingsPath"/>.</param>
+    public ControlBarForm(string settingsPath, string? oldSettingsPath = null)
     {
         _settingsPath = settingsPath;
-        (_settings, string? settingsError) = SettingsStore.Load(settingsPath);
+        (_settings, string? settingsError) = SettingsStore.Load(settingsPath, oldSettingsPath);
         var (region, monitor) = RegionPlacement.Restore(_settings.LastRegion, Screens.All());
         _frame = new FrameWindow(region, monitor) { SnapSource = WindowEnumerator.SnapTargetsFor };
         _magnifier = new MagnifierWindow(_frame);
