@@ -182,6 +182,20 @@ public class SettingsFormTests
         Assert.Equal(sizesBar.BackColor, bar.BackColor);
     });
 
+    [Fact]
+    public void The_version_is_on_the_left_of_the_bottom_bar() => Sta.Run(async () =>
+    {
+        using var dialog = await Show(new AppSettings(), false, false);
+        string expected = "v" + typeof(SettingsForm).Assembly.GetName().Version!.ToString(3);
+
+        var label = All<Label>(dialog).Single(l => l.Text == expected);
+        var cancel = All<Button>(dialog).Single(b => b.Text == "取消");
+        Assert.Same(BottomBar(dialog, "確定"), label.Parent);
+        Assert.Equal(dialog.LogicalToDeviceUnits(24), label.Left);
+        Assert.True(label.Right < cancel.Left, $"the version ends at {label.Right}, Cancel starts at {cancel.Left}");
+        Assert.InRange(label.Top + label.Height / 2, cancel.Top, cancel.Bottom);
+    });
+
     /// <summary>The bar holding the button: the dialog's full width, along its bottom edge, gray.</summary>
     private static Control BottomBar(Form dialog, string button)
     {

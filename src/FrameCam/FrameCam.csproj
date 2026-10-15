@@ -26,6 +26,19 @@
     <ProjectReference Include="..\FrameCam.Core\FrameCam.Core.csproj" />
   </ItemGroup>
 
+  <!-- The version is 1.0 and the number of commits (spec 8.5), so every commit counts up by one. Without
+       git, for example when built from a zip, it stays 1.0.0. -->
+  <Target Name="SetVersionFromCommitCount" BeforeTargets="GetAssemblyVersion">
+    <Exec Command="git rev-list --count HEAD" WorkingDirectory="$(MSBuildProjectDirectory)" ConsoleToMSBuild="true"
+          IgnoreExitCode="true" StandardOutputImportance="low" StandardErrorImportance="low" ContinueOnError="true">
+      <Output TaskParameter="ConsoleOutput" PropertyName="CommitCount" />
+      <Output TaskParameter="ExitCode" PropertyName="CommitCountExitCode" />
+    </Exec>
+    <PropertyGroup Condition="'$(CommitCountExitCode)' == '0'">
+      <Version>1.0.$(CommitCount)</Version>
+    </PropertyGroup>
+  </Target>
+
   <ItemGroup>
     <InternalsVisibleTo Include="FrameCam.CaptureTests" />
     <EmbeddedResource Include="Assets\Icons\FrameCam.ico" LogicalName="FrameCam.AppIcon" />

@@ -6,7 +6,7 @@ namespace FrameCam.UI;
 /// The settings dialog (spec 8.5): save folder, the hotkeys for recording, pausing, screenshots and picking a window,
 /// frames per second, hiding the cursor in videos. Design 21: round fields,
 /// and 30 / 60 as two buttons. A hotkey that could not be registered gets a red field and a note under it
-/// until another key is picked.
+/// until another key is picked. The bottom bar shows FrameCam's version on the left.
 /// </summary>
 internal sealed class SettingsForm : LightDialog
 {
@@ -92,7 +92,7 @@ internal sealed class SettingsForm : LightDialog
             SettingName("選視窗快捷鍵", pickField), pickField, pickNote,
             SettingName("每秒格數", fps), fps,
             _hideCursor,
-            BottomBar(420, 494, cancel, ok), close,
+            BottomBar(420, 494, Version(), cancel, ok), close,
         });
         ResumeLayout(false);
         PerformLayout();
@@ -143,6 +143,10 @@ internal sealed class SettingsForm : LightDialog
     /// <summary>The note in the gap under a hotkey field.</summary>
     private static Label Note(FieldBox field) =>
         new() { Text = FailedMessage, AutoSize = true, Location = new Point(field.Left + 12, field.Bottom + 3), ForeColor = Palette.ErrorText, Visible = false };
+
+    /// <summary>"v1.0.51": 1.0 and the number of commits, set when FrameCam is built.</summary>
+    private static Label Version() =>
+        Caption("v" + typeof(SettingsForm).Assembly.GetName().Version!.ToString(3), 24, (BottomBarHeight - 15) / 2);
 
     /// <summary>A setting's name, on the left of its field and level with it.</summary>
     private static Label SettingName(string text, Control field) => Caption(text, 24, field.Top + (field.Height - 15) / 2);
