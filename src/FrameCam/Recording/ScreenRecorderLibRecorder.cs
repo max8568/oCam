@@ -75,7 +75,7 @@ public sealed class ScreenRecorderLibRecorder : IScreenRecorder
             // Relative to the monitor's top-left (checked on a non-primary monitor by RecordingEngineTests).
             SourceRect = new ScreenRect(r.Left - m.Left, r.Top - m.Top, r.Width, r.Height),
             Stretch = StretchMode.None,
-            IsCursorCaptureEnabled = true,
+            IsCursorCaptureEnabled = !request.HideCursor,
         };
         return new RecorderOptions
         {
@@ -108,7 +108,7 @@ public sealed class ScreenRecorderLibRecorder : IScreenRecorder
                 Channels = AudioChannels.Stereo,
                 AudioSources = audioSource is null ? [] : [audioSource],
             },
-            MouseOptions = new MouseOptions { IsMousePointerEnabled = true },
+            MouseOptions = new MouseOptions { IsMousePointerEnabled = !request.HideCursor },
         };
     }
 }

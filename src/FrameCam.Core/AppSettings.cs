@@ -21,6 +21,10 @@ public sealed record AppSettings
     public string ScreenshotHotkey { get; init; } = "F3";
     public string PickHotkey { get; init; } = "F6";
     public int FramesPerSecond { get; init; } = 60;
+
+    /// <summary>Leave the mouse cursor out of videos. Screenshots never have it.</summary>
+    public bool HideCursor { get; init; }
+
     public SavedRegion? LastRegion { get; init; }
     public SavedPosition? LastBarPosition { get; init; }
 

@@ -172,7 +172,7 @@ internal sealed class ControlBarForm : PillBarWindow
         bool hasAudio;
         try
         {
-            hasAudio = _recorder.Start(new RecordingRequest(monitor.DeviceName, monitor.Bounds, _frame.CaptureRegion, _settings.FramesPerSecond, path));
+            hasAudio = _recorder.Start(new RecordingRequest(monitor.DeviceName, monitor.Bounds, _frame.CaptureRegion, _settings.FramesPerSecond, path, _settings.HideCursor));
         }
         catch (Exception ex)
         {

@@ -105,6 +105,27 @@ public class RecordingEngineTests
         Assert.All(Ffmpeg.DecodeLuma(outside).Frames.Skip(1), frame => Assert.Equal(0, CursorPixels(frame, w, 2, 2)));
     }
 
+    /// <summary>With the cursor hidden, a cursor inside the region does not show up in the video.</summary>
+    [CaptureFact]
+    public void Hidden_cursor_is_not_drawn()
+    {
+        string video = Path.Combine(Directory.CreateTempSubdirectory("framecam 測試 hidden cursor ").FullName, "hidden.mp4");
+        Sta.Run(async () =>
+        {
+            var screen = Screen.PrimaryScreen!;
+            var monitor = screen.Bounds.ToPixelRect();
+            var region = new PixelRect(monitor.Left + 101, monitor.Top + 77, RegionSize.Width, RegionSize.Height);
+            using var pattern = new TestPatternForm(region);
+            pattern.Show();
+            Cursor.Position = new Point(region.Left + 320, region.Top + 180);
+            await Task.Delay(500);
+            await Record(screen.DeviceName, monitor, region, video, seconds: 2, hideCursor: true);
+        });
+
+        var (w, _, frames) = Ffmpeg.DecodeLuma(video);
+        Assert.All(frames, frame => Assert.Equal(0, CursorPixels(frame, w, 320, 180)));
+    }
+
     [CaptureFact]
     public void Stopping_twice_finishes_once()
     {
@@ -198,7 +219,7 @@ public class RecordingEngineTests
     private sealed record RecordingResult(bool HasAudio, double Seconds);
 
     /// <summary>Records while a tone plays. Must run on an STA thread (inside Sta.Run).</summary>
-    private static async Task<RecordingResult> Record(string device, PixelRect monitor, PixelRect region, string path, int seconds)
+    private static async Task<RecordingResult> Record(string device, PixelRect monitor, PixelRect region, string path, int seconds, bool hideCursor = false)
     {
         using var recorder = new ScreenRecorderLibRecorder();
         var started = new TaskCompletionSource();
@@ -208,7 +229,7 @@ public class RecordingEngineTests
         recorder.Failed += (_, error) => finished.TrySetException(new InvalidOperationException(error));
 
         using var tone = Tone.Play();
-        bool hasAudio = recorder.Start(new RecordingRequest(device, monitor, region, 60, path));
+        bool hasAudio = recorder.Start(new RecordingRequest(device, monitor, region, 60, path, hideCursor));
         await started.Task.WaitAsync(TimeSpan.FromSeconds(10));
         var clock = Stopwatch.StartNew();
         await Task.Delay(TimeSpan.FromSeconds(seconds));

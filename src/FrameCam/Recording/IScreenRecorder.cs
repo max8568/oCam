@@ -2,13 +2,17 @@ using FrameCam.Core;
 
 namespace FrameCam.Recording;
 
-/// <summary>What to record. MonitorBounds and Region are physical-pixel desktop coordinates.</summary>
+/// <summary>
+/// What to record. MonitorBounds and Region are physical-pixel desktop coordinates. HideCursor leaves the mouse
+/// cursor out of the video.
+/// </summary>
 public sealed record RecordingRequest(
     string MonitorDeviceName,
     PixelRect MonitorBounds,
     PixelRect Region,
     int FramesPerSecond,
-    string OutputPath);
+    string OutputPath,
+    bool HideCursor = false);
 
 /// <summary>
 /// Records a screen region to an MP4 file. Events are raised on the thread that called Start,

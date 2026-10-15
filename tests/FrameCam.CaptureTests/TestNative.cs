@@ -77,6 +77,15 @@ internal static class TestNative
     /// <summary>A key press sent to the window, without touching the real keyboard.</summary>
     public static void KeyDown(IntPtr hwnd, Keys key) => SendMessage(hwnd, WM_KEYDOWN, (IntPtr)(int)key, IntPtr.Zero);
 
+    private const uint WM_KEYUP = 0x0101;
+
+    /// <summary>A key going down and back up in the window, without touching the real keyboard.</summary>
+    public static void Press(IntPtr hwnd, Keys key)
+    {
+        KeyDown(hwnd, key);
+        SendMessage(hwnd, WM_KEYUP, (IntPtr)(int)key, IntPtr.Zero);
+    }
+
     [DllImport("user32.dll")]
     private static extern int GetWindowLong(IntPtr hwnd, int index);
 

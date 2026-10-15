@@ -92,6 +92,31 @@ public class SettingsFormTests
     });
 
     [Fact]
+    public void The_hide_cursor_box_is_shown_and_saved() => Sta.Run(async () =>
+    {
+        var original = new AppSettings { HideCursor = true };
+        using var dialog = await Show(original, false, false);
+        var box = All<CheckBox>(dialog).Single(b => b.Text == "隱藏滑鼠游標");
+        Assert.True(box.Checked);
+
+        TestNative.Press(box.Handle, Keys.Space);
+
+        Assert.False(dialog.ToSettings(original).HideCursor);
+    });
+
+    [Fact]
+    public void The_hide_cursor_box_is_blue_only_when_checked() => Sta.Run(async () =>
+    {
+        using var dialog = await Show(new AppSettings { HideCursor = true }, false, false);
+        var box = All<CheckBox>(dialog).Single(b => b.Text == "隱藏滑鼠游標");
+        Assert.True(BluePixels(box) > 100, "the checked box is not filled blue");
+
+        box.Checked = false;
+
+        Assert.Equal(0, BluePixels(box));
+    });
+
+    [Fact]
     public void A_failed_pick_window_key_gets_its_note_above_the_frame_rate() => Sta.Run(async () =>
     {
         using var dialog = new SettingsForm(new AppSettings(), false, false, pickHotkeyFailed: true);
@@ -125,6 +150,15 @@ public class SettingsFormTests
         Assert.Equal(new Rectangle(0, dialog.ClientSize.Height - bar.Height, dialog.ClientSize.Width, bar.Height), bar.Bounds);
         Assert.NotEqual(dialog.BackColor, bar.BackColor);
         return bar;
+    }
+
+    /// <summary>Pixels of the dialogs' main blue, #2563EB.</summary>
+    private static int BluePixels(Control control)
+    {
+        using var bmp = new Bitmap(control.Width, control.Height);
+        control.DrawToBitmap(bmp, new Rectangle(Point.Empty, control.Size));
+        int blue = Color.FromArgb(0x25, 0x63, 0xEB).ToArgb();
+        return Enumerable.Range(0, bmp.Height).Sum(y => Enumerable.Range(0, bmp.Width).Count(x => bmp.GetPixel(x, y).ToArgb() == blue));
     }
 
     private static async Task<SettingsForm> Show(AppSettings settings, bool recordHotkeyFailed, bool screenshotHotkeyFailed)
