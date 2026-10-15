@@ -106,17 +106,58 @@ public class CustomSizesFormTests
     });
 
     [Fact]
-    public void Deleting_removes_the_selected_size() => Sta.Run(async () =>
+    public void Add_button_is_on_the_same_line_as_the_boxes() => Sta.Run(async () =>
+    {
+        using var dialog = await Show([]);
+        var add = Button(dialog, "新增");
+        var row = Box(dialog, "寬").Parent!.Bounds; // the round field around the box
+        Assert.InRange(add.Top + add.Height / 2, row.Top, row.Bottom);
+        Assert.True(add.Top < List(dialog).Parent!.Top, "the add row comes before the list");
+    });
+
+    [Fact]
+    public void There_is_no_separate_delete_button() => Sta.Run(async () =>
+    {
+        using var dialog = await Show([new CustomSize("a", 800, 600)]);
+        Assert.DoesNotContain(All<Button>(dialog), b => b.Text == "刪除");
+    });
+
+    [Fact]
+    public void Clicking_the_x_at_the_end_of_a_row_deletes_that_size() => Sta.Run(async () =>
     {
         using var dialog = await Show([new CustomSize("a", 800, 600), new CustomSize("b", 640, 480), new CustomSize("c", 320, 240)]);
-        Assert.False(Button(dialog, "刪除").Enabled); // nothing selected yet
-        List(dialog).SelectedIndex = 1;
-        Assert.True(Button(dialog, "刪除").Enabled);
+        var list = List(dialog);
+        var row = list.GetItemRectangle(1);
 
-        Button(dialog, "刪除").PerformClick();
+        TestNative.Click(list.Handle, new Point(row.Right - list.LogicalToDeviceUnits(16), row.Top + row.Height / 2));
 
         Assert.Equal([new CustomSize("a", 800, 600), new CustomSize("c", 320, 240)], dialog.Sizes);
-        Assert.Equal(1, List(dialog).SelectedIndex); // the next one, so pressing again keeps deleting
+        Assert.Equal(["a", "c"], list.Items.Cast<CustomSize>().Select(c => c.Label));
+    });
+
+    [Fact]
+    public void Clicking_elsewhere_on_a_row_deletes_nothing() => Sta.Run(async () =>
+    {
+        using var dialog = await Show([new CustomSize("a", 800, 600), new CustomSize("b", 640, 480)]);
+        var list = List(dialog);
+        var row = list.GetItemRectangle(1);
+
+        TestNative.Click(list.Handle, new Point(row.Left + list.LogicalToDeviceUnits(20), row.Top + row.Height / 2));
+
+        Assert.Equal(2, dialog.Sizes.Count);
+    });
+
+    [Fact]
+    public void Delete_key_deletes_the_selected_size() => Sta.Run(async () =>
+    {
+        using var dialog = await Show([new CustomSize("a", 800, 600), new CustomSize("b", 640, 480), new CustomSize("c", 320, 240)]);
+        var list = List(dialog);
+        list.SelectedIndex = 1;
+
+        TestNative.KeyDown(list.Handle, Keys.Delete);
+
+        Assert.Equal([new CustomSize("a", 800, 600), new CustomSize("c", 320, 240)], dialog.Sizes);
+        Assert.Equal(1, list.SelectedIndex); // the next one, so pressing again keeps deleting
     });
 
     private static async Task<CustomSizesForm> Show(CustomSize[] sizes)

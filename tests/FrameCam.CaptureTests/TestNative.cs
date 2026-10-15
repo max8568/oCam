@@ -53,6 +53,11 @@ internal static class TestNative
             SendMessage(hwnd, WM_CHAR, c, IntPtr.Zero);
     }
 
+    private const uint WM_KEYDOWN = 0x0100;
+
+    /// <summary>A key press sent to the window, without touching the real keyboard.</summary>
+    public static void KeyDown(IntPtr hwnd, Keys key) => SendMessage(hwnd, WM_KEYDOWN, (IntPtr)(int)key, IntPtr.Zero);
+
     [DllImport("user32.dll")]
     [return: MarshalAs(UnmanagedType.Bool)]
     private static extern bool GetWindowDisplayAffinity(IntPtr hwnd, out uint affinity);
