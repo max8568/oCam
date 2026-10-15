@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none">
+  <title>FrameCam — capture frame and recording light</title>
+  <rect x="2" y="2" width="60" height="60" rx="14" fill="#2563EB"/>
+  <path d="M23 18H15V26 M41 18H49V26 M15 38V46H23 M49 38V46H41"
+        stroke="#FFFFFF" stroke-width="4.2" stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="32" cy="32" r="9.5" fill="#FFFFFF"/>
+  <circle cx="32" cy="32" r="7" fill="#EF4444"/>
+</svg>

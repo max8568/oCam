@@ -10,6 +10,7 @@
     <ApplicationHighDpiMode>PerMonitorV2</ApplicationHighDpiMode>
     <RootNamespace>FrameCam</RootNamespace>
     <AssemblyName>FrameCam</AssemblyName>
+    <ApplicationIcon>Assets\Icons\FrameCam.ico</ApplicationIcon>
   </PropertyGroup>
 
   <ItemGroup>
@@ -27,6 +28,7 @@
 
   <ItemGroup>
     <InternalsVisibleTo Include="FrameCam.CaptureTests" />
+    <EmbeddedResource Include="Assets\Icons\FrameCam.ico" LogicalName="FrameCam.AppIcon" />
   </ItemGroup>
 
 </Project>
