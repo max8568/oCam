@@ -10,6 +10,9 @@ public sealed record SavedRegion(string DeviceName, int Left, int Top, int Width
     public PixelRect Rect => new(Left, Top, Width, Height);
 }
 
+/// <summary>The control bar's top-left corner at exit, with the monitor it was on.</summary>
+public sealed record SavedPosition(string DeviceName, int Left, int Top);
+
 /// <summary>Everything stored in settings.json (spec 8.5). Hotkeys are text such as "F2" or "Ctrl+Shift+R".</summary>
 public sealed record AppSettings
 {
@@ -19,6 +22,7 @@ public sealed record AppSettings
     public string PickHotkey { get; init; } = "F6";
     public int FramesPerSecond { get; init; } = 60;
     public SavedRegion? LastRegion { get; init; }
+    public SavedPosition? LastBarPosition { get; init; }
 
     /// <summary>The user's own sizes for the size menu, in the order they were added.</summary>
     public IReadOnlyList<CustomSize> CustomSizes { get; init; } = [];

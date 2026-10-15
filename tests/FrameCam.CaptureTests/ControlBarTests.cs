@@ -319,6 +319,31 @@ public class ControlBarTests
     });
 
     [Fact]
+    public void The_bar_opens_where_it_was_when_it_was_closed() => Sta.Run(async () =>
+    {
+        string path = NewSettingsFile();
+        var bar = new ControlBarForm(path);
+        bar.Show();
+        await Task.Delay(300);
+        var moved = new Point(bar.Left - 200, bar.Top + 150); // what dragging it does
+        bar.Location = moved;
+        bar.Close();
+        await Task.Delay(300);
+
+        var again = new ControlBarForm(path);
+        try
+        {
+            again.Show();
+            await Task.Delay(300);
+            Assert.Equal(moved, again.Location);
+        }
+        finally
+        {
+            again.Close();
+        }
+    });
+
+    [Fact]
     public void The_size_menu_is_white_with_round_corners_and_a_light_gray_row_under_the_mouse() => Sta.Run(async () =>
     {
         var bar = new ControlBarForm(NewSettingsFile());

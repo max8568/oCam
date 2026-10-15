@@ -79,8 +79,17 @@ internal sealed class ControlBarForm : PillBarWindow
     {
         base.OnLoad(e);
         RegisterHotkeys(); // first: it sets the record button's text, and so the bar's width
-        var area = Screen.FromRectangle(_frame.Monitor.Bounds.ToRectangle()).WorkingArea;
-        Location = new Point(area.Right - 16 - (int)BarLayout.Bar.Right, area.Top + 16 - (int)BarLayout.Bar.Top);
+        var bar = BarLayout.Bar;
+        var size = new PixelSize((int)MathF.Ceiling(bar.Width), (int)MathF.Ceiling(bar.Height));
+        if (BarPlacement.Restore(_settings.LastBarPosition, size, Screens.All()) is { } saved)
+        {
+            Location = new Point(saved.X - (int)bar.Left, saved.Y - (int)bar.Top);
+        }
+        else
+        {
+            var area = Screen.FromRectangle(_frame.Monitor.Bounds.ToRectangle()).WorkingArea;
+            Location = new Point(area.Right - 16 - (int)bar.Right, area.Top + 16 - (int)bar.Top);
+        }
         _frame.Show();
         SystemEvents.DisplaySettingsChanged += OnDisplaySettingsChanged;
     }
@@ -392,7 +401,13 @@ internal sealed class ControlBarForm : PillBarWindow
     private void SaveSettings()
     {
         var r = _frame.CaptureRegion;
-        _settings = _settings with { LastRegion = new SavedRegion(_frame.Monitor.DeviceName, r.Left, r.Top, r.Width, r.Height) };
+        // The window is larger than the bar to hold its shadow; keep where the bar itself is.
+        var bar = new PixelPoint(Left + (int)BarLayout.Bar.Left, Top + (int)BarLayout.Bar.Top);
+        _settings = _settings with
+        {
+            LastRegion = new SavedRegion(_frame.Monitor.DeviceName, r.Left, r.Top, r.Width, r.Height),
+            LastBarPosition = new SavedPosition(Screens.At(bar).DeviceName, bar.X, bar.Y),
+        };
         try
         {
             SettingsStore.Save(_settingsPath, _settings);

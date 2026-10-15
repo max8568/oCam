@@ -85,6 +85,7 @@ public class SettingsStoreTests
             ScreenshotHotkey = "F10",
             FramesPerSecond = 30,
             LastRegion = new SavedRegion(@"\\.\DISPLAY1", 1921, 33, 640, 360),
+            LastBarPosition = new SavedPosition(@"\\.\DISPLAY1", 2400, 16),
         };
         SettingsStore.Save(path, saved);
         var (loaded, error) = SettingsStore.Load(path);
