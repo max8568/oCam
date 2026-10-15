@@ -6,7 +6,7 @@ namespace FrameCam.Core;
 /// </summary>
 public sealed class SnapTargets
 {
-    public const int Threshold = 8;
+    public const int Threshold = 4;
     public static readonly SnapTargets None = new([], []);
 
     private readonly int[] _xs;

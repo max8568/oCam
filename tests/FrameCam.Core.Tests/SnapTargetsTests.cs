@@ -8,10 +8,10 @@ public class SnapTargetsTests
     private static readonly PixelRect Start = new(100, 100, 640, 360); // right 740, bottom 460
 
     [Theory]
+    [InlineData(502, 500)] // 2 pixels away: snaps
     [InlineData(504, 500)] // 4 pixels away: snaps
-    [InlineData(508, 500)] // 8 pixels away: snaps
-    [InlineData(509, 508)] // 9 pixels away: no snap; width 409 becomes 408
-    public void Dragged_edge_snaps_within_eight_pixels(int rawRight, int expectedRight)
+    [InlineData(505, 504)] // 5 pixels away: no snap; width 405 becomes 404
+    public void Dragged_edge_snaps_within_four_pixels(int rawRight, int expectedRight)
     {
         var snap = new SnapTargets([500], []);
         var result = FrameGeometry.Resize(Start, Handle.Right, new PixelPoint(rawRight - 740, 0), Monitor, snap);
@@ -42,10 +42,10 @@ public class SnapTargetsTests
     public void FromRects_uses_window_edges_on_the_monitor_only()
     {
         var targets = SnapTargets.FromRects([new PixelRect(200, 300, 400, 100), new PixelRect(2000, 300, 100, 100)], Monitor);
-        Assert.Equal(200, targets.SnapX(205));
+        Assert.Equal(200, targets.SnapX(204));
         Assert.Equal(600, targets.SnapX(596));
-        Assert.Equal(300, targets.SnapY(307));
+        Assert.Equal(300, targets.SnapY(303));
         Assert.Equal(400, targets.SnapY(399));
-        Assert.Equal(2005, targets.SnapX(2005)); // the window on another monitor is ignored
+        Assert.Equal(2003, targets.SnapX(2003)); // the window on another monitor is ignored
     }
 }
