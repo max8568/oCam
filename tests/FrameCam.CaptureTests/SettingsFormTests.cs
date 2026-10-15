@@ -77,6 +77,31 @@ public class SettingsFormTests
         Assert.InRange(notes[1].Top, screenshot.Bottom, fps.Top - notes[1].Height);
     });
 
+    [Fact]
+    public void Cancel_and_OK_sit_in_the_same_gray_bottom_bar_as_the_custom_sizes_dialog() => Sta.Run(async () =>
+    {
+        using var settings = await Show(new AppSettings(), false, false);
+        using var sizes = new CustomSizesForm([], new PixelSize(1280, 720));
+        sizes.Show();
+        await Task.Delay(200);
+
+        var bar = BottomBar(settings, "確定");
+        Assert.Same(bar, All<Button>(settings).Single(b => b.Text == "取消").Parent);
+        var sizesBar = BottomBar(sizes, "完成");
+        Assert.Equal(sizesBar.Height, bar.Height);
+        Assert.Equal(sizesBar.BackColor, bar.BackColor);
+    });
+
+    /// <summary>The bar holding the button: the dialog's full width, along its bottom edge, gray.</summary>
+    private static Control BottomBar(Form dialog, string button)
+    {
+        var bar = All<Button>(dialog).Single(b => b.Text == button).Parent!;
+        Assert.Same(dialog, bar.Parent);
+        Assert.Equal(new Rectangle(0, dialog.ClientSize.Height - bar.Height, dialog.ClientSize.Width, bar.Height), bar.Bounds);
+        Assert.NotEqual(dialog.BackColor, bar.BackColor);
+        return bar;
+    }
+
     private static async Task<SettingsForm> Show(AppSettings settings, bool recordHotkeyFailed, bool screenshotHotkeyFailed)
     {
         var dialog = new SettingsForm(settings, recordHotkeyFailed, screenshotHotkeyFailed);

@@ -75,13 +75,7 @@ internal sealed class CustomSizesForm : LightDialog
 
         var done = new RoundButton { Text = "完成", DialogResult = DialogResult.OK, Bounds = new Rectangle(354, 14, 84, 36) };
         done.SetColors(Palette.Accent, Palette.AccentHover, Palette.AccentPressed, Color.White);
-        var bar = new Panel { Bounds = new Rectangle(0, 406, 460, 64), BackColor = Palette.Band };
-        bar.Paint += (_, e) =>
-        {
-            using var line = new Pen(Palette.Border, 1);
-            e.Graphics.DrawLine(line, 0, 0, bar.Width, 0);
-        };
-        bar.Controls.AddRange(new Control[] { _count, done });
+        var bar = BottomBar(460, 406, _count, done);
         AcceptButton = add; // Enter in the boxes adds what was typed
         CancelButton = done;
 

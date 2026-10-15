@@ -4,12 +4,14 @@ namespace FrameCam.UI;
 
 /// <summary>
 /// The look FrameCam's dialogs share (design 21): no title bar (drag the dialog by its top), Windows 11 round
-/// corners and a thin border, a bold heading, and a round close button at the top right. Always on top,
-/// because the control bar that owns it is; a dialog that is not would open behind it.
+/// corners and a thin border, a bold heading, a round close button at the top right, and a gray bar along the
+/// bottom for the closing buttons. Always on top, because the control bar that owns it is; a dialog that is
+/// not would open behind it.
 /// </summary>
 internal abstract class LightDialog : Form
 {
     protected const int HeaderHeight = 52;
+    protected const int BottomBarHeight = 64;
 
     private readonly string _heading;
 
@@ -73,6 +75,22 @@ internal abstract class LightDialog : Form
         var close = new RoundButton { Glyph = Glyph.Close, GlyphSize = 14, Bounds = new Rectangle(width - 46, 14, 32, 32), DialogResult = result, TabStop = false, AccessibleName = "關閉" };
         close.SetColors(Palette.Field, Palette.Pressed, Palette.FieldButtonHover, Palette.Muted);
         return close;
+    }
+
+    /// <summary>
+    /// The gray bar along the bottom of a dialog <paramref name="width"/> wide, from <paramref name="top"/> down
+    /// (at 100 % scale), with a thin line on top. Buttons in it go 14 from its top and 22 from the right edge.
+    /// </summary>
+    protected static Panel BottomBar(int width, int top, params Control[] controls)
+    {
+        var bar = new Panel { Bounds = new Rectangle(0, top, width, BottomBarHeight), BackColor = Palette.Band };
+        bar.Paint += (_, e) =>
+        {
+            using var line = new Pen(Palette.Border, 1);
+            e.Graphics.DrawLine(line, 0, 0, bar.Width, 0);
+        };
+        bar.Controls.AddRange(controls);
+        return bar;
     }
 
     protected static Label Caption(string text, int x, int y) =>

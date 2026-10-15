@@ -56,9 +56,9 @@ internal sealed class SettingsForm : LightDialog
         _fps60.Click += (_, _) => SelectFramesPerSecond(60);
         SelectFramesPerSecond(settings.FramesPerSecond);
 
-        var ok = new RoundButton { Text = "確定", DialogResult = DialogResult.OK, Bounds = new Rectangle(314, 314, 84, 36) };
+        var ok = new RoundButton { Text = "確定", DialogResult = DialogResult.OK, Bounds = new Rectangle(314, 14, 84, 36) };
         ok.SetColors(Palette.Accent, Palette.AccentHover, Palette.AccentPressed, Color.White);
-        var cancel = new RoundButton { Text = "取消", DialogResult = DialogResult.Cancel, Bounds = new Rectangle(222, 314, 84, 36) };
+        var cancel = new RoundButton { Text = "取消", DialogResult = DialogResult.Cancel, Bounds = new Rectangle(222, 14, 84, 36) };
         cancel.SetColors(Palette.Field, Palette.Pressed, Palette.FieldButtonHover, Palette.Ink);
         AcceptButton = ok;
         CancelButton = cancel;
@@ -69,7 +69,7 @@ internal sealed class SettingsForm : LightDialog
             SettingName("錄影快捷鍵", recordField), recordField, recordNote,
             SettingName("截圖快捷鍵", screenshotField), screenshotField, screenshotNote,
             SettingName("每秒格數", fps), fps,
-            cancel, ok, close,
+            BottomBar(420, 308, cancel, ok), close,
         });
         ResumeLayout(false);
         PerformLayout();
