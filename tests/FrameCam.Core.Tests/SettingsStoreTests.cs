@@ -29,6 +29,7 @@ public class SettingsStoreTests
         var settings = new AppSettings();
         Assert.Equal(OutputDirectory.Default, settings.OutputFolder);
         Assert.Equal("F2", settings.RecordHotkey);
+        Assert.Equal("Space", settings.PauseHotkey);
         Assert.Equal("F3", settings.ScreenshotHotkey);
         Assert.Equal("F6", settings.PickHotkey);
         Assert.Equal(60, settings.FramesPerSecond);
@@ -83,6 +84,7 @@ public class SettingsStoreTests
         {
             OutputFolder = @"D:\錄影",
             RecordHotkey = "Ctrl+F9",
+            PauseHotkey = "F7",
             ScreenshotHotkey = "F10",
             FramesPerSecond = 30,
             HideCursor = true,
@@ -142,6 +144,13 @@ public class SettingsStoreTests
     {
         var (settings, _) = SettingsStore.Load(WriteFile("""{ "PickHotkey": " " }"""));
         Assert.Equal("F6", settings.PickHotkey);
+    }
+
+    [Fact]
+    public void A_blank_pause_key_gets_the_default()
+    {
+        var (settings, _) = SettingsStore.Load(WriteFile("""{ "PauseHotkey": "" }"""));
+        Assert.Equal("Space", settings.PauseHotkey);
     }
 
     [Fact]

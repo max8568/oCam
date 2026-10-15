@@ -11,6 +11,8 @@ namespace FrameCam.CaptureTests;
 public class FrameWindowRepaintTests
 {
     private static readonly Color Blue = Color.FromArgb(0, 120, 215);
+    private static readonly Color Red = Color.FromArgb(220, 40, 40);
+    private static readonly Color Orange = Color.FromArgb(245, 158, 11);
 
     [DllImport("user32.dll")]
     [return: MarshalAs(UnmanagedType.Bool)]
@@ -34,6 +36,26 @@ public class FrameWindowRepaintTests
             (start, d) => new PixelRect(start.Left, start.Top, start.Width + d, start.Height + d),
             start => (new Rectangle(start.Left + 40, start.Top - 1, 60, 1), new Rectangle(start.Left - 1, start.Top + 40, 1, 60)));
         Assert.True(blue >= total * 0.99, $"blue in {blue} of {total} samples");
+    });
+
+    [Fact]
+    public void A_paused_frame_is_orange_and_red_again_after_resuming() => Sta.Run(async () =>
+    {
+        var monitor = Screens.At(new PixelPoint(0, 0)); // the primary monitor
+        var region = new PixelRect(monitor.Bounds.Left + 400, monitor.Bounds.Top + 250, 700, 400);
+        using var frame = new FrameWindow(region, monitor);
+        frame.Show();
+        await Task.Delay(300);
+        SetWindowDisplayAffinity(frame.Handle, 0); // let the screen capture see the frame, in this test only
+        frame.Locked = true;
+
+        frame.Paused = true;
+        await Task.Delay(200);
+        Assert.Equal(Orange.ToArgb(), ScreenPixel(region.Left - 1, region.Top + 40).ToArgb());
+
+        frame.Paused = false;
+        await Task.Delay(200);
+        Assert.Equal(Red.ToArgb(), ScreenPixel(region.Left - 1, region.Top + 40).ToArgb());
     });
 
     [Fact]
@@ -169,6 +191,14 @@ public class FrameWindowRepaintTests
         Volatile.Write(ref stop, true);
         sampler.Join();
         return (blue, total);
+    }
+
+    private static Color ScreenPixel(int x, int y)
+    {
+        using var bmp = new Bitmap(1, 1);
+        using (var g = Graphics.FromImage(bmp))
+            g.CopyFromScreen(x, y, 0, 0, bmp.Size);
+        return bmp.GetPixel(0, 0);
     }
 
     private static IEnumerable<Color> Pixels(Bitmap bmp)

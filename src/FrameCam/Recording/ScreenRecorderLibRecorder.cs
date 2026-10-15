@@ -24,10 +24,15 @@ public sealed class ScreenRecorderLibRecorder : IScreenRecorder
 
         var loopback = Recorder.GetSystemAudioLoopbackDevices().FirstOrDefault(d => d.IsDefaultDevice);
         var recorder = Recorder.CreateRecorder(BuildOptions(request, loopback));
+        bool started = false;
         recorder.OnStatusChanged += (_, e) =>
         {
-            if (e.Status == RecorderStatus.Recording)
+            // Resuming after a pause also reports Recording; only the first one is the start.
+            if (e.Status == RecorderStatus.Recording && !started)
+            {
+                started = true;
                 Post(() => Started?.Invoke(this, EventArgs.Empty));
+            }
         };
         recorder.OnRecordingComplete += (_, e) => Post(() => Finish(recorder, () => Completed?.Invoke(this, e.FilePath)));
         recorder.OnRecordingFailed += (_, e) => Post(() => Finish(recorder, () => Failed?.Invoke(this, e.Error)));
@@ -47,6 +52,10 @@ public sealed class ScreenRecorderLibRecorder : IScreenRecorder
     }
 
     public void Stop() => _recorder?.Stop();
+
+    public void Pause() => _recorder?.Pause();
+
+    public void Resume() => _recorder?.Resume();
 
     public void Dispose()
     {

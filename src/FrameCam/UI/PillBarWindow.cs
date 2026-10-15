@@ -64,6 +64,8 @@ internal abstract class PillBarWindow : LayeredWindow
 
     protected void SetRecording(bool recording) => Change(_look with { Recording = recording });
 
+    protected void SetPaused(bool paused) => Change(_look with { Paused = paused });
+
     protected void SetElapsed(string elapsed) => Change(_look with { Elapsed = elapsed });
 
     protected void SetRecordHint(string hint) => Change(_look with { RecordHint = hint }, relayout: true);

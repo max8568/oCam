@@ -1,7 +1,7 @@
 namespace FrameCam.UI;
 
 /// <summary>The control bar's buttons, left to right.</summary>
-internal enum BarItem { Record, Screenshot, Size, Pick, Folder, Settings, Help, Close }
+internal enum BarItem { Record, Pause, Screenshot, Size, Pick, Folder, Settings, Help, Close }
 
 /// <summary>
 /// Where everything on the control bar goes, in pixels of its window. The bar is a pill 48 pixels high
@@ -43,6 +43,7 @@ internal sealed class ControlBarLayout
         }
 
         Add(BarItem.Record, recordWidth);
+        Add(BarItem.Pause, ButtonSize * scale);
         Add(BarItem.Screenshot, ButtonSize * scale);
         Separator();
         Add(BarItem.Size, ButtonSize * scale);

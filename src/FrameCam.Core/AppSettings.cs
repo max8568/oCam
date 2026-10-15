@@ -18,6 +18,10 @@ public sealed record AppSettings
 {
     public string OutputFolder { get; init; } = OutputDirectory.Default;
     public string RecordHotkey { get; init; } = "F2";
+
+    /// <summary>Registered only while recording: Space alone keeps every other program from getting a space.</summary>
+    public string PauseHotkey { get; init; } = "Space";
+
     public string ScreenshotHotkey { get; init; } = "F3";
     public string PickHotkey { get; init; } = "F6";
     public int FramesPerSecond { get; init; } = 60;
@@ -110,6 +114,7 @@ public static class SettingsStore
         {
             OutputFolder = string.IsNullOrWhiteSpace(s.OutputFolder) ? defaults.OutputFolder : s.OutputFolder,
             RecordHotkey = string.IsNullOrWhiteSpace(s.RecordHotkey) ? defaults.RecordHotkey : s.RecordHotkey,
+            PauseHotkey = string.IsNullOrWhiteSpace(s.PauseHotkey) ? defaults.PauseHotkey : s.PauseHotkey,
             ScreenshotHotkey = string.IsNullOrWhiteSpace(s.ScreenshotHotkey) ? defaults.ScreenshotHotkey : s.ScreenshotHotkey,
             PickHotkey = string.IsNullOrWhiteSpace(s.PickHotkey) ? defaults.PickHotkey : s.PickHotkey,
             FramesPerSecond = s.FramesPerSecond is 30 or 60 ? s.FramesPerSecond : defaults.FramesPerSecond,

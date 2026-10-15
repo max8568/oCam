@@ -36,4 +36,9 @@ public interface IScreenRecorder : IDisposable
     bool Start(RecordingRequest request);
 
     void Stop();
+
+    /// <summary>Stops writing frames and sound until Resume; the time in between is left out of the file.</summary>
+    void Pause();
+
+    void Resume();
 }

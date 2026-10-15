@@ -126,6 +126,118 @@ public class RecordingEngineTests
         Assert.All(frames, frame => Assert.Equal(0, CursorPixels(frame, w, 320, 180)));
     }
 
+    /// <summary>
+    /// What is on screen while paused stays out of the video, the video lasts only the time actually recorded,
+    /// and sound and picture are still together after resuming. The region is dark before the pause, white
+    /// during it and gray after it.
+    /// </summary>
+    [CaptureFact]
+    public void Paused_time_is_left_out_of_the_video()
+    {
+        string video = Path.Combine(Directory.CreateTempSubdirectory("framecam 測試 pause ").FullName, "pause.mp4");
+        double recorded = Sta.Run(async () =>
+        {
+            var screen = Screen.PrimaryScreen!;
+            var monitor = screen.Bounds.ToPixelRect();
+            var region = new PixelRect(monitor.Left + 101, monitor.Top + 77, RegionSize.Width, RegionSize.Height);
+            Cursor.Position = new Point(monitor.Left + 2, monitor.Top + 2);
+            using var panel = new PhaseColorForm(region.ToRectangle(), Color.FromArgb(40, 40, 40));
+            panel.Show();
+            await Task.Delay(500);
+
+            using var recorder = new ScreenRecorderLibRecorder();
+            var started = new TaskCompletionSource();
+            var finished = new TaskCompletionSource();
+            recorder.Started += (_, _) => started.TrySetResult();
+            recorder.Completed += (_, _) => finished.TrySetResult();
+            recorder.Failed += (_, error) => finished.TrySetException(new InvalidOperationException(error));
+            using var tone = Tone.Play();
+            recorder.Start(new RecordingRequest(screen.DeviceName, monitor, region, 60, video));
+            await started.Task.WaitAsync(TimeSpan.FromSeconds(10));
+            var clock = Stopwatch.StartNew();
+            await Task.Delay(2000);
+            recorder.Pause();
+            double before = clock.Elapsed.TotalSeconds;
+            // White only from a moment after pausing to a moment before resuming, so a pause or resume that
+            // takes ScreenRecorderLib a little while does not count as a failure.
+            await Task.Delay(300);
+            panel.Phase = Color.White;
+            await Task.Delay(1500);
+            panel.Phase = TestPatternForm.Inside;
+            await Task.Delay(300);
+            recorder.Resume();
+            clock.Restart();
+            await Task.Delay(2000);
+            recorder.Stop();
+            double after = clock.Elapsed.TotalSeconds;
+            await finished.Task.WaitAsync(TimeSpan.FromSeconds(30));
+            return before + after;
+        });
+
+        var (w, _, frames) = Ffmpeg.DecodeLuma(video);
+        var centers = frames.Select(frame => frame[180 * w + 320]).ToList();
+        Assert.DoesNotContain(centers, v => v > 200); // white: recorded while paused
+        Assert.Contains(centers, v => v < 80);        // dark: before the pause
+        Assert.Contains(centers, v => v is > 100 and < 160); // gray: after resuming
+        AssertInSync(video, recorded, MovingScreenTail);
+    }
+
+    /// <summary>Resuming is not a new start; the control bar would set its recording time back to zero.</summary>
+    [CaptureFact]
+    public void Resuming_does_not_raise_Started_again()
+    {
+        string video = Path.Combine(Directory.CreateTempSubdirectory("framecam 測試 resume ").FullName, "resume.mp4");
+        int starts = Sta.Run(async () =>
+        {
+            var screen = Screen.PrimaryScreen!;
+            var monitor = screen.Bounds.ToPixelRect();
+            using var recorder = new ScreenRecorderLibRecorder();
+            int count = 0;
+            var finished = new TaskCompletionSource();
+            recorder.Started += (_, _) => count++;
+            recorder.Completed += (_, _) => finished.TrySetResult();
+            recorder.Failed += (_, error) => finished.TrySetException(new InvalidOperationException(error));
+            recorder.Start(new RecordingRequest(screen.DeviceName, monitor, new PixelRect(monitor.Left, monitor.Top, 320, 240), 30, video));
+            for (int i = 0; i < 100 && count == 0; i++)
+                await Task.Delay(100);
+            recorder.Pause();
+            await Task.Delay(500);
+            recorder.Resume();
+            await Task.Delay(1000); // a second Started would arrive here
+            recorder.Stop();
+            await finished.Task.WaitAsync(TimeSpan.FromSeconds(30));
+            return count;
+        });
+
+        Assert.Equal(1, starts);
+    }
+
+    [CaptureFact]
+    public void Stopping_while_paused_saves_the_file()
+    {
+        string video = Path.Combine(Directory.CreateTempSubdirectory("framecam 測試 stop paused ").FullName, "paused.mp4");
+        Sta.Run(async () =>
+        {
+            var screen = Screen.PrimaryScreen!;
+            var monitor = screen.Bounds.ToPixelRect();
+            using var recorder = new ScreenRecorderLibRecorder();
+            var started = new TaskCompletionSource();
+            var finished = new TaskCompletionSource();
+            recorder.Started += (_, _) => started.TrySetResult();
+            recorder.Completed += (_, _) => finished.TrySetResult();
+            recorder.Failed += (_, error) => finished.TrySetException(new InvalidOperationException(error));
+            recorder.Start(new RecordingRequest(screen.DeviceName, monitor, new PixelRect(monitor.Left, monitor.Top, 320, 240), 30, video));
+            await started.Task.WaitAsync(TimeSpan.FromSeconds(10));
+            await Task.Delay(1000);
+            recorder.Pause();
+            await Task.Delay(500);
+            recorder.Stop();
+            await finished.Task.WaitAsync(TimeSpan.FromSeconds(30));
+        });
+
+        Assert.True(Ffmpeg.CountFrames(video) > 0, "the saved video has no frames");
+    }
+
     [CaptureFact]
     public void Stopping_twice_finishes_once()
     {

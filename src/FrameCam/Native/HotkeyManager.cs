@@ -7,6 +7,7 @@ internal sealed class HotkeyManager : NativeWindow, IDisposable
     private static readonly IntPtr HWND_MESSAGE = new(-3);
 
     private readonly Dictionary<int, Action> _actions = [];
+    private readonly Dictionary<Keys, int> _ids = [];
     private int _nextId = 1;
 
     public HotkeyManager() => CreateHandle(new CreateParams { Parent = HWND_MESSAGE });
@@ -22,7 +23,17 @@ internal sealed class HotkeyManager : NativeWindow, IDisposable
         if (!NativeMethods.RegisterHotKey(Handle, id, modifiers, (uint)(keys & Keys.KeyCode)))
             return false;
         _actions[id] = action;
+        _ids[keys] = id;
         return true;
+    }
+
+    /// <summary>Releases one key registered here; nothing happens when it is not registered.</summary>
+    public void Unregister(Keys keys)
+    {
+        if (!_ids.Remove(keys, out int id))
+            return;
+        NativeMethods.UnregisterHotKey(Handle, id);
+        _actions.Remove(id);
     }
 
     public void UnregisterAll()
@@ -30,6 +41,7 @@ internal sealed class HotkeyManager : NativeWindow, IDisposable
         foreach (int id in _actions.Keys)
             NativeMethods.UnregisterHotKey(Handle, id);
         _actions.Clear();
+        _ids.Clear();
     }
 
     protected override void WndProc(ref Message m)

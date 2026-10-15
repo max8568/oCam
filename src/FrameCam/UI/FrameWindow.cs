@@ -24,12 +24,14 @@ internal sealed class FrameWindow : Form
 {
     private static readonly Color IdleColor = Color.FromArgb(0, 120, 215);
     private static readonly Color RecordingColor = Color.FromArgb(220, 40, 40);
+    private static readonly Color PausedColor = Color.FromArgb(245, 158, 11);
     private static readonly Font LabelFont = new("Segoe UI", 12f, FontStyle.Bold, GraphicsUnit.Pixel);
 
     private PixelRect _region;
     private MonitorInfo _monitor;
     private FrameLayout _layout;
     private bool _locked;
+    private bool _paused;
     private MoverWindow? _mover;
 
     private FrameHandle? _dragHandle;
@@ -85,11 +87,25 @@ internal sealed class FrameWindow : Form
             _locked = value;
             _dragHandle = null;
             Capture = false;
-            BackColor = value ? RecordingColor : IdleColor;
+            BackColor = BorderColor;
             Cursor = Cursors.Default;
             ApplyLayout(); // the arrow in the middle goes away while recording, and comes back
         }
     }
+
+    /// <summary>While the recording is paused the locked frame is orange instead of red.</summary>
+    [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
+    public bool Paused
+    {
+        get => _paused;
+        set
+        {
+            _paused = value;
+            BackColor = BorderColor;
+        }
+    }
+
+    private Color BorderColor => !_locked ? IdleColor : _paused ? PausedColor : RecordingColor;
 
     public void SetRegion(PixelRect region, MonitorInfo monitor)
     {
@@ -239,7 +255,7 @@ internal sealed class FrameWindow : Form
     protected override void OnPaint(PaintEventArgs e)
     {
         var g = e.Graphics;
-        var color = _locked ? RecordingColor : IdleColor;
+        var color = BorderColor;
         using var border = new SolidBrush(color);
         using var outline = new Pen(color);
         foreach (var r in _layout.Ring)

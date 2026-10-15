@@ -35,6 +35,22 @@ public class HotkeyTextTests
     public void Keys_used_for_typing_cannot_be_global_hotkeys(Keys keys) =>
         Assert.False(HotkeyText.IsUsable(keys));
 
+    [Fact]
+    public void Space_alone_can_be_the_pause_key()
+    {
+        Assert.True(HotkeyText.IsUsable(Keys.Space, allowSpace: true));
+        Assert.True(HotkeyText.TryParse("Space", out var keys, allowSpace: true));
+        Assert.Equal(Keys.Space, keys);
+        Assert.Equal("Space", HotkeyText.Format(keys));
+    }
+
+    [Theory]
+    [InlineData(Keys.R)]
+    [InlineData(Keys.Back)]
+    [InlineData(Keys.Shift | Keys.Space)]
+    public void Other_keys_used_for_typing_cannot_be_the_pause_key(Keys keys) =>
+        Assert.False(HotkeyText.IsUsable(keys, allowSpace: true));
+
     [Theory]
     [InlineData(Keys.F2)]
     [InlineData(Keys.Shift | Keys.F12)]

@@ -42,6 +42,7 @@ public class SettingsFormTests
     [Theory]
     [InlineData("存檔資料夾")]
     [InlineData("錄影快捷鍵")]
+    [InlineData("暫停快捷鍵")]
     [InlineData("截圖快捷鍵")]
     [InlineData("選視窗快捷鍵")]
     [InlineData("每秒格數")]
@@ -59,7 +60,7 @@ public class SettingsFormTests
     public void Fields_line_up_on_their_left_edge() => Sta.Run(async () =>
     {
         using var dialog = await Show(new AppSettings(), false, false);
-        var lefts = new[] { "存檔資料夾", "錄影快捷鍵", "截圖快捷鍵", "選視窗快捷鍵" }.Select(n => Field(dialog, n).Left).Distinct();
+        var lefts = new[] { "存檔資料夾", "錄影快捷鍵", "暫停快捷鍵", "截圖快捷鍵", "選視窗快捷鍵" }.Select(n => Field(dialog, n).Left).Distinct();
         Assert.Single(lefts);
     });
 
@@ -69,13 +70,14 @@ public class SettingsFormTests
         using var dialog = await Show(new AppSettings(), recordHotkeyFailed: true, screenshotHotkeyFailed: true);
         var notes = All<Label>(dialog).Where(l => l.Visible && l.Text == FailedMessage).OrderBy(l => l.Top).ToArray();
         var record = Field(dialog, "錄影快捷鍵");
+        var pause = Field(dialog, "暫停快捷鍵");
         var screenshot = Field(dialog, "截圖快捷鍵");
-        var fps = Field(dialog, "每秒格數");
+        var pick = Field(dialog, "選視窗快捷鍵");
 
         Assert.Equal(2, notes.Length);
         Assert.Equal(record.Left, notes[0].Left - dialog.LogicalToDeviceUnits(12));
-        Assert.InRange(notes[0].Top, record.Bottom, screenshot.Top - notes[0].Height);
-        Assert.InRange(notes[1].Top, screenshot.Bottom, fps.Top - notes[1].Height);
+        Assert.InRange(notes[0].Top, record.Bottom, pause.Top - notes[0].Height);
+        Assert.InRange(notes[1].Top, screenshot.Bottom, pick.Top - notes[1].Height);
     });
 
     [Fact]
@@ -89,6 +91,44 @@ public class SettingsFormTests
         box.Hotkey = Keys.F7;
 
         Assert.Equal("F7", dialog.ToSettings(original).PickHotkey);
+    });
+
+    [Fact]
+    public void The_pause_key_is_shown_and_saved() => Sta.Run(async () =>
+    {
+        var original = new AppSettings { PauseHotkey = "Space" };
+        using var dialog = await Show(original, false, false);
+        var box = All<HotkeyTextBox>(dialog).Single(b => b.AccessibleName == "暫停快捷鍵");
+        Assert.Equal(Keys.Space, box.Hotkey);
+
+        box.Hotkey = Keys.F7;
+
+        Assert.Equal("F7", dialog.ToSettings(original).PauseHotkey);
+    });
+
+    [Fact]
+    public void Only_the_pause_key_can_be_Space_alone() => Sta.Run(async () =>
+    {
+        var original = new AppSettings { PauseHotkey = "F7" };
+        using var dialog = await Show(original, false, false);
+
+        PressIn(All<HotkeyTextBox>(dialog).Single(b => b.AccessibleName == "暫停快捷鍵"), Keys.Space);
+        PressIn(All<HotkeyTextBox>(dialog).Single(b => b.AccessibleName == "錄影快捷鍵"), Keys.Space);
+
+        var saved = dialog.ToSettings(original);
+        Assert.Equal("Space", saved.PauseHotkey);
+        Assert.Equal("F2", saved.RecordHotkey);
+    });
+
+    [Fact]
+    public void A_failed_pause_key_gets_its_note_above_the_screenshot_key() => Sta.Run(async () =>
+    {
+        using var dialog = new SettingsForm(new AppSettings(), false, false, pauseHotkeyFailed: true);
+        dialog.Show();
+        await Task.Delay(200);
+        var note = All<Label>(dialog).Single(l => l.Visible && l.Text == FailedMessage);
+
+        Assert.InRange(note.Top, Field(dialog, "暫停快捷鍵").Bottom, Field(dialog, "截圖快捷鍵").Top - note.Height);
     });
 
     [Fact]
@@ -167,6 +207,14 @@ public class SettingsFormTests
         dialog.Show();
         await Task.Delay(200);
         return dialog;
+    }
+
+    /// <summary>A key going down in the box the way the message loop hands it over, through ProcessCmdKey.</summary>
+    private static void PressIn(Control box, Keys key)
+    {
+        const int WM_KEYDOWN = 0x0100;
+        var msg = Message.Create(box.Handle, WM_KEYDOWN, (IntPtr)(int)key, IntPtr.Zero);
+        box.PreProcessMessage(ref msg);
     }
 
     /// <summary>The round field that holds the setting with this name.</summary>

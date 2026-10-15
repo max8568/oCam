@@ -9,6 +9,9 @@ internal sealed record BarLook
 {
     public bool Recording { get; init; }
 
+    /// <summary>The pause button shows the resume sign instead of the pause sign.</summary>
+    public bool Paused { get; init; }
+
     /// <summary>The record hotkey written on the record button; empty when it could not be registered.</summary>
     public string RecordHint { get; init; } = "";
 
@@ -22,7 +25,8 @@ internal sealed record BarLook
 
 /// <summary>
 /// Draws the control bar (design 21): a white pill with a soft shadow, a red record button that becomes
-/// the stop button with the recording time, and round icon buttons. Transparent outside the pill.
+/// the stop button with the recording time, and round icon buttons; the pause button becomes the resume
+/// button while paused. Transparent outside the pill.
 /// </summary>
 internal static class ControlBarPainter
 {
@@ -42,6 +46,7 @@ internal static class ControlBarPainter
 
     private static readonly Dictionary<BarItem, Glyph> IconOf = new()
     {
+        [BarItem.Pause] = Glyph.Pause,
         [BarItem.Screenshot] = Glyph.Camera,
         [BarItem.Size] = Glyph.Size,
         [BarItem.Pick] = Glyph.PickWindow,
@@ -88,8 +93,9 @@ internal static class ControlBarPainter
                 g.FillRectangle(line, x - scale / 2, bar.Top + bar.Height / 2 - 10 * scale, scale, 20 * scale);
 
         DrawRecordButton(g, layout[BarItem.Record], look, scale);
-        foreach (var (item, glyph) in IconOf)
+        foreach (var (item, icon) in IconOf)
         {
+            var glyph = item == BarItem.Pause && look.Paused ? Glyph.Play : icon;
             var rect = layout[item];
             bool enabled = !look.Disabled.Contains(item);
             if (enabled && (look.Pressed == item || look.Hover == item))

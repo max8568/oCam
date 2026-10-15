@@ -10,6 +10,7 @@ public class ControlBarTests
 {
     private const Keys RecordKey = Keys.Control | Keys.Alt | Keys.Shift | Keys.F11;
     private const Keys PickKey = Keys.Control | Keys.Alt | Keys.Shift | Keys.F10;
+    private const Keys PauseKey = Keys.Control | Keys.Alt | Keys.Shift | Keys.F8; // F9 is taken on the dev machine
 
     [Fact]
     public void Closing_the_frame_ends_the_program() => Sta.Run(async () =>
@@ -596,6 +597,146 @@ public class ControlBarTests
         }
     });
 
+    [Fact]
+    public void Pausing_works_only_while_recording() => Sta.Run(async () =>
+    {
+        var bar = new ControlBarForm(NewSettingsFile());
+        try
+        {
+            bar.Show();
+            await Task.Delay(300);
+            Assert.Contains(BarItem.Pause, bar.Look.Disabled);
+            Assert.True(CanRegister(PauseKey), "the pause key is taken before recording");
+
+            bar.ToggleRecording();
+            await WaitFor(() => !bar.Look.Disabled.Contains(BarItem.Pause));
+            Assert.False(CanRegister(PauseKey), "the pause key is free while recording");
+
+            bar.ToggleRecording();
+            await WaitFor(() => !bar.Look.Recording);
+            Assert.Contains(BarItem.Pause, bar.Look.Disabled);
+            Assert.True(CanRegister(PauseKey), "the pause key is still taken after recording");
+        }
+        finally
+        {
+            bar.Close();
+        }
+    });
+
+    [Fact]
+    public void Pausing_stops_the_recording_time_and_resuming_goes_on_from_there() => Sta.Run(async () =>
+    {
+        var bar = new ControlBarForm(NewSettingsFile());
+        try
+        {
+            bar.Show();
+            await Task.Delay(300);
+            bar.ToggleRecording();
+            await WaitFor(() => !bar.Look.Disabled.Contains(BarItem.Pause));
+            await Task.Delay(1300);
+
+            bar.TogglePause();
+            Assert.True(bar.Look.Paused);
+            Assert.Equal("00:00:01", bar.Look.Elapsed);
+            await Task.Delay(2000);
+            Assert.Equal("00:00:01", bar.Look.Elapsed); // without the pause: 3
+
+            bar.TogglePause();
+            Assert.False(bar.Look.Paused);
+            await Task.Delay(1200);
+            Assert.Equal("00:00:02", bar.Look.Elapsed); // from zero again: 1; counting the pause: 4
+        }
+        finally
+        {
+            bar.Close();
+            await WaitFor(() => bar.IsDisposed);
+        }
+    });
+
+    [Fact]
+    public void Pausing_says_so_under_the_bar_and_turns_the_frame_orange() => Sta.Run(async () =>
+    {
+        var bar = new ControlBarForm(NewSettingsFile());
+        try
+        {
+            bar.Show();
+            await Task.Delay(300);
+            bar.ToggleRecording();
+            await WaitFor(() => !bar.Look.Disabled.Contains(BarItem.Pause));
+
+            bar.TogglePause();
+            Assert.True(bar.Frame.Paused);
+            Assert.Equal("已暫停", bar.StatusBubble.Message);
+            Assert.True(bar.StatusBubble.Visible);
+
+            bar.TogglePause();
+            Assert.False(bar.Frame.Paused);
+            Assert.False(bar.StatusBubble.Visible);
+        }
+        finally
+        {
+            bar.Close();
+            await WaitFor(() => bar.IsDisposed);
+        }
+    });
+
+    [Fact]
+    public void Stopping_while_paused_saves_the_video_and_ends_the_pause() => Sta.Run(async () =>
+    {
+        string settings = NewSettingsFile();
+        var bar = new ControlBarForm(settings);
+        try
+        {
+            bar.Show();
+            await Task.Delay(300);
+            bar.ToggleRecording();
+            await WaitFor(() => !bar.Look.Disabled.Contains(BarItem.Pause));
+            await Task.Delay(500);
+            bar.TogglePause();
+
+            bar.ToggleRecording();
+            await WaitFor(() => !bar.Look.Recording);
+
+            Assert.False(bar.Look.Paused);
+            Assert.False(bar.Frame.Paused);
+            Assert.False(bar.Frame.Locked);
+            Assert.Single(Directory.GetFiles(Path.GetDirectoryName(settings)!, "*.mp4"));
+        }
+        finally
+        {
+            bar.Close();
+        }
+    });
+
+    [Fact]
+    public void A_taken_pause_key_is_reported_when_recording_starts() => Sta.Run(async () =>
+    {
+        using var taken = new HotkeyManager();
+        Assert.True(taken.Register(PauseKey, () => { }));
+        var bar = new ControlBarForm(NewSettingsFile());
+        try
+        {
+            bar.Show();
+            await Task.Delay(300);
+            bar.ToggleRecording();
+            await WaitFor(() => !bar.Look.Disabled.Contains(BarItem.Pause));
+
+            Assert.Contains($"暫停快捷鍵 {HotkeyText.Format(PauseKey)} 登記失敗", bar.StatusBubble.Message);
+        }
+        finally
+        {
+            bar.Close();
+            await WaitFor(() => bar.IsDisposed);
+        }
+    });
+
+    private static async Task WaitFor(Func<bool> condition)
+    {
+        for (int i = 0; i < 100 && !condition(); i++)
+            await Task.Delay(100);
+        Assert.True(condition(), "timed out after 10 seconds");
+    }
+
     private static Point Center(RectangleF r) => new((int)(r.Left + r.Width / 2), (int)(r.Top + r.Height / 2));
 
     private static Color ScreenPixel(int x, int y)
@@ -620,6 +761,7 @@ public class ControlBarTests
         {
             OutputFolder = folder,
             RecordHotkey = HotkeyText.Format(RecordKey),
+            PauseHotkey = HotkeyText.Format(PauseKey),
             ScreenshotHotkey = HotkeyText.Format(Keys.Control | Keys.Alt | Keys.Shift | Keys.F12),
             PickHotkey = HotkeyText.Format(PickKey),
             CustomSizes = customSizes,

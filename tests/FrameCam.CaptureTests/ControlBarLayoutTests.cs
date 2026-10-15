@@ -32,6 +32,16 @@ public class ControlBarLayoutTests
     }
 
     [Fact]
+    public void The_pause_button_sits_between_the_record_and_screenshot_buttons()
+    {
+        var layout = ControlBarLayout.Compute(1f, 92);
+
+        Assert.Equal(36, layout[BarItem.Pause].Width);
+        Assert.Equal(layout[BarItem.Record].Right + 4, layout[BarItem.Pause].Left);
+        Assert.Equal(layout[BarItem.Pause].Right + 4, layout[BarItem.Screenshot].Left);
+    }
+
+    [Fact]
     public void Bar_is_48_pixels_high_with_a_see_through_margin_for_its_shadow()
     {
         var layout = ControlBarLayout.Compute(1f, 92);

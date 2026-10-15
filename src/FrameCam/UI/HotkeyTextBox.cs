@@ -15,6 +15,10 @@ internal sealed class HotkeyTextBox : TextBox
         Width = 160;
     }
 
+    /// <summary>Space alone is accepted too; for the pause key, which is registered only while recording.</summary>
+    [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
+    public bool AllowSpace { get; init; }
+
     /// <summary>Raised when the key combination changes, by the user or in code.</summary>
     public event EventHandler? HotkeyChanged;
 
@@ -38,7 +42,7 @@ internal sealed class HotkeyTextBox : TextBox
         bool plain = (keyData & Keys.Modifiers) == Keys.None;
         if (plain && code is Keys.Tab or Keys.Escape or Keys.Enter)
             return base.ProcessCmdKey(ref msg, keyData); // keep dialog navigation
-        if (HotkeyText.IsUsable(keyData))
+        if (HotkeyText.IsUsable(keyData, AllowSpace))
             Hotkey = keyData;
         return true; // otherwise wait for a usable combination
     }

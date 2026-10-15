@@ -23,12 +23,16 @@ internal sealed class ControlBarForm : PillBarWindow
     private readonly System.Windows.Forms.Timer _elapsedTimer = new() { Interval = 500 };
     private readonly System.Windows.Forms.Timer _flashTimer = new() { Interval = 2000 };
     private string _baseStatus = "";
-    private DateTime? _recordingSince;
+    private TimeSpan _recordedBefore; // recorded before the stretch that started at _recordingSince
+    private DateTime? _recordingSince; // null while paused
+    private bool _paused;
+    private Keys? _pauseKey; // held only while recording
     private string _recordingNote = "";
     private string _stopNote = "";
     private bool _stopping;
     private bool _closeAfterRecording;
     private bool _recordHotkeyFailed;
+    private bool _pauseHotkeyFailed;
     private bool _screenshotHotkeyFailed;
     private bool _pickHotkeyFailed;
     private bool _picking;
@@ -62,6 +66,7 @@ internal sealed class ControlBarForm : PillBarWindow
         };
 
         Text = "FrameCam";
+        SetEnabled(BarItem.Pause, false); // until a recording has its first frame
 
         if (settingsError is not null)
             SetStatus(settingsError);
@@ -99,6 +104,7 @@ internal sealed class ControlBarForm : PillBarWindow
         switch (item)
         {
             case BarItem.Record: ToggleRecording(); break;
+            case BarItem.Pause: TogglePause(); break;
             case BarItem.Screenshot: TakeScreenshot(); break;
             case BarItem.Size: ShowSizeMenu(); break;
             case BarItem.Pick: PickWindow(); break;
@@ -111,6 +117,7 @@ internal sealed class ControlBarForm : PillBarWindow
 
     protected override string TipFor(BarItem item) => item switch
     {
+        BarItem.Pause => (_paused ? "繼續錄影" : "暫停") + (_pauseHotkeyFailed ? "" : $" ({_settings.PauseHotkey})"),
         BarItem.Screenshot => _screenshotHotkeyFailed ? "截圖" : $"截圖 ({_settings.ScreenshotHotkey})",
         BarItem.Size => "常用尺寸",
         BarItem.Pick => _pickHotkeyFailed ? "選視窗" : $"選視窗 ({_settings.PickHotkey})",
@@ -153,7 +160,7 @@ internal sealed class ControlBarForm : PillBarWindow
 
     // ---- Recording (spec 8.1, 9) ----
 
-    private void ToggleRecording()
+    internal void ToggleRecording()
     {
         if (_stopping)
             return; // already finishing the file
@@ -179,14 +186,20 @@ internal sealed class ControlBarForm : PillBarWindow
             SetStatus($"無法開始錄影：{ex.Message}");
             return;
         }
-        _recordingNote = hasAudio ? "" : "找不到播放裝置，只錄畫面";
+        RegisterPauseHotkey();
+        var notes = new List<string>();
+        if (!hasAudio)
+            notes.Add("找不到播放裝置，只錄畫面");
+        if (_pauseHotkeyFailed)
+            notes.Add($"暫停快捷鍵 {_settings.PauseHotkey} 登記失敗，可能已經被其他程式使用，控制列上的暫停鈕還是可以用");
+        _recordingNote = string.Join("；", notes);
         _stopNote = "";
         _frame.Locked = true;
         SetElapsed("00:00:00");
         SetRecording(true);
         SetEnabled(BarItem.Size, false);
         SetEnabled(BarItem.Pick, false);
-        SetStatus(hasAudio ? "準備錄影…" : $"準備錄影…（{_recordingNote}）");
+        SetStatus(_recordingNote.Length == 0 ? "準備錄影…" : $"準備錄影…（{_recordingNote}）");
     }
 
     private void StopRecording(string note)
@@ -194,6 +207,7 @@ internal sealed class ControlBarForm : PillBarWindow
         _stopping = true;
         _stopNote = note;
         SetEnabled(BarItem.Record, false);
+        SetEnabled(BarItem.Pause, false);
         _elapsedTimer.Stop();
         SetStatus(note + "正在存檔…");
         _recorder.Stop();
@@ -203,31 +217,94 @@ internal sealed class ControlBarForm : PillBarWindow
     {
         if (_stopping)
             return;
+        _recordedBefore = TimeSpan.Zero;
         _recordingSince = DateTime.Now;
         _elapsedTimer.Start();
         ShowRecordingTime();
+        SetEnabled(BarItem.Pause, true);
         SetStatus(_recordingNote);
     }
 
     private void ShowRecordingTime()
     {
         if (_recordingSince is { } since)
-            SetElapsed($"{DateTime.Now - since:hh\\:mm\\:ss}");
+            ShowElapsed(_recordedBefore + (DateTime.Now - since));
     }
+
+    private void ShowElapsed(TimeSpan time) => SetElapsed($"{time:hh\\:mm\\:ss}");
 
     private void OnRecordingEnded(string message)
     {
         _elapsedTimer.Stop();
         _recordingSince = null;
         _stopping = false;
+        _paused = false;
+        ReleasePauseHotkey();
+        _frame.Paused = false;
         _frame.Locked = false;
         SetRecording(false);
+        SetPaused(false);
         SetEnabled(BarItem.Record, true);
+        SetEnabled(BarItem.Pause, false); // a failed recording ends without StopRecording
         SetEnabled(BarItem.Size, true);
         SetEnabled(BarItem.Pick, true);
         SetStatus(message);
         if (_closeAfterRecording)
             Close();
+    }
+
+    // ---- Pause (spec 8.1) ----
+
+    internal void TogglePause()
+    {
+        if (Look.Disabled.Contains(BarItem.Pause))
+            return; // the hotkey, like the button: off until the first frame and while saving
+        if (_paused)
+            Resume();
+        else
+            Pause();
+    }
+
+    private void Pause()
+    {
+        _recorder.Pause();
+        _paused = true;
+        _recordedBefore += DateTime.Now - _recordingSince!.Value;
+        _recordingSince = null;
+        _elapsedTimer.Stop();
+        ShowElapsed(_recordedBefore);
+        SetPaused(true);
+        _frame.Paused = true;
+        SetStatus("已暫停");
+    }
+
+    private void Resume()
+    {
+        _recorder.Resume();
+        _paused = false;
+        _recordingSince = DateTime.Now;
+        _elapsedTimer.Start();
+        SetPaused(false);
+        _frame.Paused = false;
+        SetStatus(_recordingNote);
+    }
+
+    /// <summary>
+    /// The pause key is held only while recording: as long as it is held, no other program gets that key, and
+    /// its default is Space.
+    /// </summary>
+    private void RegisterPauseHotkey()
+    {
+        bool registered = HotkeyText.TryParse(_settings.PauseHotkey, out var keys, allowSpace: true) && _hotkeys.Register(keys, TogglePause);
+        _pauseKey = registered ? keys : null;
+        _pauseHotkeyFailed = !registered;
+    }
+
+    private void ReleasePauseHotkey()
+    {
+        if (_pauseKey is { } keys)
+            _hotkeys.Unregister(keys);
+        _pauseKey = null;
     }
 
     // ---- Screenshot (spec 8.2) ----
@@ -363,7 +440,7 @@ internal sealed class ControlBarForm : PillBarWindow
         _hotkeys.UnregisterAll(); // otherwise pressing F2 in a hotkey box records instead of reaching the box
         try
         {
-            using var dialog = new SettingsForm(_settings, _recordHotkeyFailed, _screenshotHotkeyFailed, _pickHotkeyFailed);
+            using var dialog = new SettingsForm(_settings, _recordHotkeyFailed, _screenshotHotkeyFailed, _pickHotkeyFailed, _pauseHotkeyFailed);
             if (dialog.ShowDialog(this) != DialogResult.OK)
                 return;
             _settings = dialog.ToSettings(_settings);
@@ -399,10 +476,14 @@ internal sealed class ControlBarForm : PillBarWindow
             if (!_frame.Locked) // like the button, which is off while recording
                 PickWindow();
         });
+        if (_recorder.IsRecording)
+            RegisterPauseHotkey(); // again after a dialog that released every key
         SetRecordHint(_recordHotkeyFailed ? "" : _settings.RecordHotkey);
         var failed = new List<string>();
         if (_recordHotkeyFailed)
             failed.Add($"錄影 {_settings.RecordHotkey}");
+        if (_recorder.IsRecording && _pauseHotkeyFailed)
+            failed.Add($"暫停 {_settings.PauseHotkey}");
         if (_screenshotHotkeyFailed)
             failed.Add($"截圖 {_settings.ScreenshotHotkey}");
         if (_pickHotkeyFailed)
