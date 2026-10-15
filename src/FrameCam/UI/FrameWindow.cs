@@ -287,6 +287,7 @@ internal sealed class FrameWindow : Form
         Region = shape;
         old?.Dispose();
         Invalidate();
+        Update(); // paint now: in a drag the mouse moves keep coming, and a paint left waiting showed the moved side white
         PlaceMover();
     }
 
