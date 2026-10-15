@@ -30,6 +30,8 @@ internal sealed class ControlBarForm : PillBarWindow
     private bool _closeAfterRecording;
     private bool _recordHotkeyFailed;
     private bool _screenshotHotkeyFailed;
+    private bool _pickHotkeyFailed;
+    private bool _picking;
 
     /// <param name="oldSettingsPath">Read when <paramref name="settingsPath"/> does not exist yet; saving always goes to <paramref name="settingsPath"/>.</param>
     public ControlBarForm(string settingsPath, string? oldSettingsPath = null)
@@ -101,7 +103,7 @@ internal sealed class ControlBarForm : PillBarWindow
     {
         BarItem.Screenshot => _screenshotHotkeyFailed ? "截圖" : $"截圖 ({_settings.ScreenshotHotkey})",
         BarItem.Size => "常用尺寸",
-        BarItem.Pick => "選視窗",
+        BarItem.Pick => _pickHotkeyFailed ? "選視窗" : $"選視窗 ({_settings.PickHotkey})",
         BarItem.Folder => "開啟存檔資料夾",
         BarItem.Settings => "設定",
         BarItem.Close => "結束 FrameCam",
@@ -309,10 +311,24 @@ internal sealed class ControlBarForm : PillBarWindow
 
     private void PickWindow()
     {
-        using var picker = new WindowPicker();
-        if (picker.ShowDialog(this) != DialogResult.OK || picker.Picked is not { } window)
-            return;
-        var monitor = Screens.At(picker.PickedAt);
+        if (_picking)
+            return; // the hotkey pressed again while picking
+        _picking = true;
+        try
+        {
+            using var picker = new WindowPicker();
+            if (picker.ShowDialog(this) != DialogResult.OK || picker.Picked is not { } window)
+                return;
+            FitFrameTo(window, Screens.At(picker.PickedAt));
+        }
+        finally
+        {
+            _picking = false;
+        }
+    }
+
+    private void FitFrameTo(PixelRect window, MonitorInfo monitor)
+    {
         if (FrameAdjust.FitToWindow(window, monitor.Bounds) is { } region)
             _frame.SetRegion(region, monitor);
         else
@@ -336,7 +352,7 @@ internal sealed class ControlBarForm : PillBarWindow
         _hotkeys.UnregisterAll(); // otherwise pressing F2 in a hotkey box records instead of reaching the box
         try
         {
-            using var dialog = new SettingsForm(_settings, _recordHotkeyFailed, _screenshotHotkeyFailed);
+            using var dialog = new SettingsForm(_settings, _recordHotkeyFailed, _screenshotHotkeyFailed, _pickHotkeyFailed);
             if (dialog.ShowDialog(this) != DialogResult.OK)
                 return;
             _settings = dialog.ToSettings(_settings);
@@ -353,14 +369,21 @@ internal sealed class ControlBarForm : PillBarWindow
         _hotkeys.UnregisterAll();
         _recordHotkeyFailed = !TryRegister(_settings.RecordHotkey, ToggleRecording);
         _screenshotHotkeyFailed = !TryRegister(_settings.ScreenshotHotkey, TakeScreenshot);
+        _pickHotkeyFailed = !TryRegister(_settings.PickHotkey, () =>
+        {
+            if (!_frame.Locked) // like the button, which is off while recording
+                PickWindow();
+        });
         SetRecordHint(_recordHotkeyFailed ? "" : _settings.RecordHotkey);
         var failed = new List<string>();
         if (_recordHotkeyFailed)
             failed.Add($"錄影 {_settings.RecordHotkey}");
         if (_screenshotHotkeyFailed)
             failed.Add($"截圖 {_settings.ScreenshotHotkey}");
+        if (_pickHotkeyFailed)
+            failed.Add($"選視窗 {_settings.PickHotkey}");
         if (failed.Count > 0)
-            SetStatus($"快捷鍵登記失敗，可能已經被其他程式使用：{string.Join("、", failed)}。用按鈕還是可以錄影和截圖。");
+            SetStatus($"快捷鍵登記失敗，可能已經被其他程式使用：{string.Join("、", failed)}。控制列上的按鈕還是可以用。");
     }
 
     private bool TryRegister(string text, Action action) =>

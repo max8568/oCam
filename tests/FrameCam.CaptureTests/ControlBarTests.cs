@@ -9,6 +9,7 @@ namespace FrameCam.CaptureTests;
 public class ControlBarTests
 {
     private const Keys RecordKey = Keys.Control | Keys.Alt | Keys.Shift | Keys.F11;
+    private const Keys PickKey = Keys.Control | Keys.Alt | Keys.Shift | Keys.F10;
 
     [Fact]
     public void Closing_the_frame_ends_the_program() => Sta.Run(async () =>
@@ -20,6 +21,23 @@ public class ControlBarTests
         await Task.Delay(300);
         Assert.True(bar.IsDisposed);
         Assert.True(bar.Frame.IsDisposed);
+    });
+
+    [Fact]
+    public void The_pick_window_key_belongs_to_the_bar_while_it_is_open() => Sta.Run(async () =>
+    {
+        var bar = new ControlBarForm(NewSettingsFile());
+        try
+        {
+            bar.Show();
+            await Task.Delay(300);
+            Assert.False(CanRegister(PickKey));
+        }
+        finally
+        {
+            bar.Close();
+        }
+        Assert.True(CanRegister(PickKey));
     });
 
     [Fact]
@@ -511,6 +529,7 @@ public class ControlBarTests
             OutputFolder = folder,
             RecordHotkey = HotkeyText.Format(RecordKey),
             ScreenshotHotkey = HotkeyText.Format(Keys.Control | Keys.Alt | Keys.Shift | Keys.F12),
+            PickHotkey = HotkeyText.Format(PickKey),
             CustomSizes = customSizes,
         });
         return path;

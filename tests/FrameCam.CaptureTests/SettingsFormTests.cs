@@ -43,6 +43,7 @@ public class SettingsFormTests
     [InlineData("存檔資料夾")]
     [InlineData("錄影快捷鍵")]
     [InlineData("截圖快捷鍵")]
+    [InlineData("選視窗快捷鍵")]
     [InlineData("每秒格數")]
     public void Each_name_is_on_the_left_of_its_field(string name) => Sta.Run(async () =>
     {
@@ -58,7 +59,7 @@ public class SettingsFormTests
     public void Fields_line_up_on_their_left_edge() => Sta.Run(async () =>
     {
         using var dialog = await Show(new AppSettings(), false, false);
-        var lefts = new[] { "存檔資料夾", "錄影快捷鍵", "截圖快捷鍵" }.Select(n => Field(dialog, n).Left).Distinct();
+        var lefts = new[] { "存檔資料夾", "錄影快捷鍵", "截圖快捷鍵", "選視窗快捷鍵" }.Select(n => Field(dialog, n).Left).Distinct();
         Assert.Single(lefts);
     });
 
@@ -75,6 +76,30 @@ public class SettingsFormTests
         Assert.Equal(record.Left, notes[0].Left - dialog.LogicalToDeviceUnits(12));
         Assert.InRange(notes[0].Top, record.Bottom, screenshot.Top - notes[0].Height);
         Assert.InRange(notes[1].Top, screenshot.Bottom, fps.Top - notes[1].Height);
+    });
+
+    [Fact]
+    public void The_pick_window_key_is_shown_and_saved() => Sta.Run(async () =>
+    {
+        var original = new AppSettings { PickHotkey = "F6" };
+        using var dialog = await Show(original, false, false);
+        var box = All<HotkeyTextBox>(dialog).Single(b => b.AccessibleName == "選視窗快捷鍵");
+        Assert.Equal(Keys.F6, box.Hotkey);
+
+        box.Hotkey = Keys.F7;
+
+        Assert.Equal("F7", dialog.ToSettings(original).PickHotkey);
+    });
+
+    [Fact]
+    public void A_failed_pick_window_key_gets_its_note_above_the_frame_rate() => Sta.Run(async () =>
+    {
+        using var dialog = new SettingsForm(new AppSettings(), false, false, pickHotkeyFailed: true);
+        dialog.Show();
+        await Task.Delay(200);
+        var note = All<Label>(dialog).Single(l => l.Visible && l.Text == FailedMessage);
+
+        Assert.InRange(note.Top, Field(dialog, "選視窗快捷鍵").Bottom, Field(dialog, "每秒格數").Top - note.Height);
     });
 
     [Fact]

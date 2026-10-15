@@ -3,7 +3,8 @@ using FrameCam.Core;
 namespace FrameCam.UI;
 
 /// <summary>
-/// The settings dialog (spec 8.5): save folder, the two hotkeys, frames per second. Design 21: round fields,
+/// The settings dialog (spec 8.5): save folder, the hotkeys for recording, screenshots and picking a window,
+/// frames per second. Design 21: round fields,
 /// and 30 / 60 as two buttons. A hotkey that could not be registered gets a red field and a note under it
 /// until another key is picked.
 /// </summary>
@@ -16,12 +17,13 @@ internal sealed class SettingsForm : LightDialog
     private readonly TextBox _folder = new() { BorderStyle = BorderStyle.None, AccessibleName = "存檔資料夾" };
     private readonly HotkeyTextBox _recordKey = new() { BorderStyle = BorderStyle.None, AccessibleName = "錄影快捷鍵" };
     private readonly HotkeyTextBox _screenshotKey = new() { BorderStyle = BorderStyle.None, AccessibleName = "截圖快捷鍵" };
+    private readonly HotkeyTextBox _pickKey = new() { BorderStyle = BorderStyle.None, AccessibleName = "選視窗快捷鍵" };
     private readonly RoundButton _fps30 = new() { Text = "30", AccessibleName = "每秒 30 格" };
     private readonly RoundButton _fps60 = new() { Text = "60", AccessibleName = "每秒 60 格" };
     private int _framesPerSecond;
 
-    public SettingsForm(AppSettings settings, bool recordHotkeyFailed, bool screenshotHotkeyFailed)
-        : base("設定", "FrameCam 設定", new Size(420, 372))
+    public SettingsForm(AppSettings settings, bool recordHotkeyFailed, bool screenshotHotkeyFailed, bool pickHotkeyFailed = false)
+        : base("設定", "FrameCam 設定", new Size(420, 434))
     {
         SuspendLayout();
 
@@ -30,6 +32,8 @@ internal sealed class SettingsForm : LightDialog
             _recordKey.Hotkey = record;
         if (HotkeyText.TryParse(settings.ScreenshotHotkey, out var screenshot))
             _screenshotKey.Hotkey = screenshot;
+        if (HotkeyText.TryParse(settings.PickHotkey, out var pick))
+            _pickKey.Hotkey = pick;
 
         var close = CloseButton(420, DialogResult.Cancel);
 
@@ -43,12 +47,16 @@ internal sealed class SettingsForm : LightDialog
         var recordNote = Note(recordField);
         var screenshotField = FieldBox.Around(new Rectangle(FieldLeft, 190, FieldWidth, 38), _screenshotKey);
         var screenshotNote = Note(screenshotField);
+        var pickField = FieldBox.Around(new Rectangle(FieldLeft, 252, FieldWidth, 38), _pickKey);
+        var pickNote = Note(pickField);
         ShowFailure(recordField, recordNote, recordHotkeyFailed);
         ShowFailure(screenshotField, screenshotNote, screenshotHotkeyFailed);
+        ShowFailure(pickField, pickNote, pickHotkeyFailed);
         _recordKey.HotkeyChanged += (_, _) => ShowFailure(recordField, recordNote, false);
         _screenshotKey.HotkeyChanged += (_, _) => ShowFailure(screenshotField, screenshotNote, false);
+        _pickKey.HotkeyChanged += (_, _) => ShowFailure(pickField, pickNote, false);
 
-        var fps = new FieldBox { Bounds = new Rectangle(FieldLeft + FieldWidth - 112, 252, 112, 36) }; // at the right end
+        var fps = new FieldBox { Bounds = new Rectangle(FieldLeft + FieldWidth - 112, 314, 112, 36) }; // at the right end
         _fps30.Bounds = new Rectangle(3, 3, 52, 30);
         _fps60.Bounds = new Rectangle(57, 3, 52, 30);
         fps.Controls.AddRange(new Control[] { _fps30, _fps60 });
@@ -68,8 +76,9 @@ internal sealed class SettingsForm : LightDialog
             SettingName("存檔資料夾", folderField), folderField,
             SettingName("錄影快捷鍵", recordField), recordField, recordNote,
             SettingName("截圖快捷鍵", screenshotField), screenshotField, screenshotNote,
+            SettingName("選視窗快捷鍵", pickField), pickField, pickNote,
             SettingName("每秒格數", fps), fps,
-            BottomBar(420, 308, cancel, ok), close,
+            BottomBar(420, 370, cancel, ok), close,
         });
         ResumeLayout(false);
         PerformLayout();
@@ -81,6 +90,7 @@ internal sealed class SettingsForm : LightDialog
         OutputFolder = _folder.Text.Trim(),
         RecordHotkey = HotkeyText.Format(_recordKey.Hotkey),
         ScreenshotHotkey = HotkeyText.Format(_screenshotKey.Hotkey),
+        PickHotkey = HotkeyText.Format(_pickKey.Hotkey),
         FramesPerSecond = _framesPerSecond,
     };
 

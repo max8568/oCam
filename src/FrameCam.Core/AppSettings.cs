@@ -16,6 +16,7 @@ public sealed record AppSettings
     public string OutputFolder { get; init; } = OutputDirectory.Default;
     public string RecordHotkey { get; init; } = "F2";
     public string ScreenshotHotkey { get; init; } = "F3";
+    public string PickHotkey { get; init; } = "F6";
     public int FramesPerSecond { get; init; } = 60;
     public SavedRegion? LastRegion { get; init; }
 
@@ -102,6 +103,7 @@ public static class SettingsStore
             OutputFolder = string.IsNullOrWhiteSpace(s.OutputFolder) ? defaults.OutputFolder : s.OutputFolder,
             RecordHotkey = string.IsNullOrWhiteSpace(s.RecordHotkey) ? defaults.RecordHotkey : s.RecordHotkey,
             ScreenshotHotkey = string.IsNullOrWhiteSpace(s.ScreenshotHotkey) ? defaults.ScreenshotHotkey : s.ScreenshotHotkey,
+            PickHotkey = string.IsNullOrWhiteSpace(s.PickHotkey) ? defaults.PickHotkey : s.PickHotkey,
             FramesPerSecond = s.FramesPerSecond is 30 or 60 ? s.FramesPerSecond : defaults.FramesPerSecond,
             CustomSizes = ValidCustomSizes(s.CustomSizes),
         };

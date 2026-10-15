@@ -30,6 +30,7 @@ public class SettingsStoreTests
         Assert.Equal(OutputDirectory.Default, settings.OutputFolder);
         Assert.Equal("F2", settings.RecordHotkey);
         Assert.Equal("F3", settings.ScreenshotHotkey);
+        Assert.Equal("F6", settings.PickHotkey);
         Assert.Equal(60, settings.FramesPerSecond);
         Assert.Null(settings.LastRegion);
         Assert.Empty(settings.CustomSizes);
@@ -131,6 +132,13 @@ public class SettingsStoreTests
             """{ "RecordHotkey": "F6", "FramesPerSecond": 45, "SomethingNew": true, "OutputFolder": "" }"""));
         Assert.Null(error);
         Assert.Equal(new AppSettings { RecordHotkey = "F6" }, settings);
+    }
+
+    [Fact]
+    public void A_blank_pick_window_key_gets_the_default()
+    {
+        var (settings, _) = SettingsStore.Load(WriteFile("""{ "PickHotkey": " " }"""));
+        Assert.Equal("F6", settings.PickHotkey);
     }
 
     [Fact]
