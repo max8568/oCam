@@ -11,7 +11,7 @@ internal sealed class LightMenu : ContextMenuStrip
 {
     public LightMenu()
     {
-        Renderer = new LightRenderer();
+        Renderer = new LightRenderer(this);
         ShowImageMargin = false;
         ShowCheckMargin = false;
         BackColor = Palette.Surface;
@@ -36,7 +36,7 @@ internal sealed class LightMenu : ContextMenuStrip
         NativeMethods.DwmSetWindowAttribute(Handle, NativeMethods.DWMWA_BORDER_COLOR, ref border, sizeof(int));
     }
 
-    private sealed class LightRenderer : ToolStripRenderer
+    private sealed class LightRenderer(LightMenu menu) : ToolStripRenderer
     {
         protected override void OnRenderToolStripBackground(ToolStripRenderEventArgs e) => e.Graphics.Clear(Palette.Surface);
 
@@ -49,7 +49,7 @@ internal sealed class LightMenu : ContextMenuStrip
         {
             if (!e.Item.Selected || !e.Item.Enabled)
                 return;
-            float scale = e.ToolStrip.DeviceDpi / 96f;
+            float scale = menu.DeviceDpi / 96f;
             e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
             var bounds = RectangleF.Inflate(new RectangleF(0, 0, e.Item.Width, e.Item.Height), -4 * scale, -1 * scale);
             using var row = Shapes.Rounded(bounds, 6 * scale);
@@ -65,7 +65,7 @@ internal sealed class LightMenu : ContextMenuStrip
 
         protected override void OnRenderSeparator(ToolStripSeparatorRenderEventArgs e)
         {
-            int inset = e.ToolStrip.LogicalToDeviceUnits(8);
+            int inset = menu.LogicalToDeviceUnits(8);
             int y = e.Item.Height / 2;
             using var pen = new Pen(Palette.Border);
             e.Graphics.DrawLine(pen, inset, y, e.Item.Width - inset, y);
