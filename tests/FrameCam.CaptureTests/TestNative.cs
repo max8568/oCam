@@ -44,6 +44,16 @@ internal static class TestNative
         SendMessage(hwnd, WM_LBUTTONUP, IntPtr.Zero, position);
     }
 
+    private const uint WM_MOUSEMOVE = 0x0200;
+
+    /// <summary>The mouse moving over a point of the window's client area, without moving the real mouse.</summary>
+    public static void MouseMove(IntPtr hwnd, Point client) =>
+        SendMessage(hwnd, WM_MOUSEMOVE, IntPtr.Zero, (IntPtr)((client.Y << 16) | (client.X & 0xFFFF)));
+
+    /// <summary>The left button going down at a point of the window's client area, and staying down.</summary>
+    public static void MouseDown(IntPtr hwnd, Point client) =>
+        SendMessage(hwnd, WM_LBUTTONDOWN, MK_LBUTTON, (IntPtr)((client.Y << 16) | (client.X & 0xFFFF)));
+
     private const uint WM_CHAR = 0x0102;
 
     /// <summary>Types the text into a window as if from the keyboard, without touching the real keyboard.</summary>

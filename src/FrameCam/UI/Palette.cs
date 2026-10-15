@@ -29,7 +29,7 @@ internal static class Palette
     public static readonly Color ErrorField = Color.FromArgb(0xFE, 0xF2, 0xF2);
     public static readonly Color ErrorBorder = Color.FromArgb(0xF8, 0x71, 0x71);
     public static readonly Color ErrorText = Color.FromArgb(0xDC, 0x26, 0x26);
-    public static readonly Color Accent = Color.FromArgb(0x4F, 0x46, 0xE5);
-    public static readonly Color AccentHover = Color.FromArgb(0x43, 0x38, 0xCA);
-    public static readonly Color AccentPressed = Color.FromArgb(0x37, 0x30, 0xA3);
+    public static readonly Color Accent = Color.FromArgb(0x25, 0x63, 0xEB); // the dialogs' main buttons: blue
+    public static readonly Color AccentHover = Color.FromArgb(0x20, 0x55, 0xCA);
+    public static readonly Color AccentPressed = Color.FromArgb(0x1B, 0x47, 0xA9);
 }
