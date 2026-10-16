@@ -457,7 +457,7 @@ internal sealed class ControlBarForm : PillBarWindow
         _hotkeys.UnregisterAll(); // otherwise F2 could start a recording with the manual in it
         try
         {
-            using var dialog = new HelpForm();
+            using var dialog = new HelpForm(_settings);
             dialog.ShowDialog(this);
         }
         finally

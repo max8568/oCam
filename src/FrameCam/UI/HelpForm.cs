@@ -1,14 +1,15 @@
 using System.Drawing.Drawing2D;
+using FrameCam.Core;
 
 namespace FrameCam.UI;
 
 /// <summary>The manual (spec 8.4), opened from the bar's help button: how to use each part of FrameCam.</summary>
 internal sealed class HelpForm : LightDialog
 {
-    public HelpForm() : base("操作說明", "FrameCam 操作說明", new Size(520, 600))
+    public HelpForm(AppSettings settings) : base("操作說明", "FrameCam 操作說明", new Size(520, 600))
     {
         SuspendLayout();
-        var view = new HelpView(HelpText.Blocks) { Bounds = new Rectangle(0, 56, 520, 480) };
+        var view = new HelpView(HelpText.Blocks(settings)) { Bounds = new Rectangle(0, 56, 520, 480) };
         var done = new RoundButton { Text = "關閉", DialogResult = DialogResult.Cancel, Bounds = new Rectangle(414, 14, 84, 36) };
         done.SetColors(Palette.Accent, Palette.AccentHover, Palette.AccentPressed, Color.White);
         AcceptButton = done;
