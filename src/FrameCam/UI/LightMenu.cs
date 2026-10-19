@@ -59,6 +59,9 @@ internal sealed class LightMenu : ContextMenuStrip
 
         protected override void OnRenderItemText(ToolStripItemTextRenderEventArgs e)
         {
+            // The menu places every item's text at the top of a row of its usual height; the taller rows need it moved down.
+            var text = e.TextRectangle;
+            e.TextRectangle = text with { Y = (e.Item.Height - text.Height) / 2 };
             e.TextColor = e.Item.Enabled ? Palette.Ink : Palette.Dots;
             base.OnRenderItemText(e);
         }

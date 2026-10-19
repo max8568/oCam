@@ -589,6 +589,39 @@ public class ControlBarTests
     });
 
     [Fact]
+    public void Size_menu_text_is_in_the_middle_of_its_row() => Sta.Run(async () =>
+    {
+        var bar = new ControlBarForm(NewSettingsFile(new CustomSize("直播", 1600, 900)));
+        try
+        {
+            bar.Show();
+            await Task.Delay(300);
+            using var menu = bar.BuildSizeMenu();
+            menu.Show(bar, new Point(20, 40));
+            await Task.Delay(300);
+
+            foreach (var item in menu.Items.OfType<ToolStripMenuItem>())
+            {
+                var row = menu.RectangleToScreen(item.Bounds);
+                using var shot = new Bitmap(row.Width, row.Height);
+                using (var g = Graphics.FromImage(shot))
+                    g.CopyFromScreen(row.Location, Point.Empty, row.Size);
+                var inked = Enumerable.Range(0, row.Height) // away from the round corners, where the screen behind shows
+                    .Where(y => Enumerable.Range(10, row.Width - 20).Any(x => shot.GetPixel(x, y) is var c && c.R + c.G + c.B < 600))
+                    .ToArray();
+                Assert.NotEmpty(inked);
+                float text = (inked[0] + inked[^1]) / 2f, middle = (row.Height - 1) / 2f;
+                Assert.True(Math.Abs(text - middle) <= 1.5f, $"{item.Text}: text on rows {inked[0]}–{inked[^1]} of 0–{row.Height - 1}");
+            }
+            menu.Close();
+        }
+        finally
+        {
+            bar.Close();
+        }
+    });
+
+    [Fact]
     public void The_bar_stays_on_top_of_other_windows() => Sta.Run(async () =>
     {
         var bar = new ControlBarForm(NewSettingsFile());
