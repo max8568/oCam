@@ -36,7 +36,7 @@ internal abstract class PillBarWindow : LayeredWindow
         get
         {
             var cp = base.CreateParams;
-            cp.ExStyle |= NativeMethods.WS_EX_TOOLWINDOW; // no taskbar button, like the tool window it replaces
+            cp.Style |= NativeMethods.WS_MINIMIZEBOX; // without a title bar, clicking the taskbar button minimizes it only with this
             // Always on top through the style: the TopMost property set before the window exists does not
             // make it so, and the bar went behind other programs.
             cp.ExStyle |= NativeMethods.WS_EX_TOPMOST;

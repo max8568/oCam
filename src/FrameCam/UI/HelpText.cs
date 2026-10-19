@@ -30,6 +30,7 @@ internal static class HelpText
         - 常用尺寸：把錄影框改成選單裡的尺寸。最下面的「自訂尺寸…」可以存自己的尺寸。
         - 開啟存檔資料夾：影片存成 MP4、截圖存成 PNG，都在這個資料夾。
         - 設定：改快捷鍵、存檔資料夾、每秒格數，以及要不要錄滑鼠游標。
+        - 縮到最小：控制列和錄影框一起收起來，點工作列上的 FrameCam 就回來。錄影中不能縮。
         """);
 
     /// <summary>Only Space alone is worth a warning: while recording, no other program gets it.</summary>

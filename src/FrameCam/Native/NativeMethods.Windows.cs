@@ -13,6 +13,8 @@ internal static partial class NativeMethods
     public const int HTCLIENT = 1;
     public const int HTCAPTION = 2;
     public const int CS_DROPSHADOW = 0x00020000;
+    public const int WS_MINIMIZEBOX = 0x00020000;
+    public const int SW_SHOWNOACTIVATE = 4;
 
     [StructLayout(LayoutKind.Sequential)]
     public struct RECT
@@ -44,6 +46,10 @@ internal static partial class NativeMethods
     [DllImport("user32.dll")]
     [return: MarshalAs(UnmanagedType.Bool)]
     public static extern bool IsIconic(IntPtr hwnd);
+
+    [DllImport("user32.dll")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    public static extern bool ShowWindow(IntPtr hwnd, int command);
 
     [DllImport("user32.dll")]
     public static extern uint GetWindowThreadProcessId(IntPtr hwnd, out uint processId);

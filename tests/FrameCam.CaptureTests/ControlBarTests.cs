@@ -182,6 +182,164 @@ public class ControlBarTests
     });
 
     [Fact]
+    public void The_bar_has_a_taskbar_button_that_minimizes_it() => Sta.Run(async () =>
+    {
+        var bar = new ControlBarForm(NewSettingsFile());
+        try
+        {
+            bar.Show();
+            await Task.Delay(300);
+            Assert.False(TestNative.IsToolWindow(bar.Handle));
+            Assert.True(TestNative.HasMinimizeBox(bar.Handle));
+        }
+        finally
+        {
+            bar.Close();
+        }
+    });
+
+    [Fact]
+    public void The_frame_hides_while_the_bar_is_minimized_and_comes_back_with_it() => Sta.Run(async () =>
+    {
+        var bar = new ControlBarForm(NewSettingsFile());
+        try
+        {
+            bar.Show();
+            await Task.Delay(300);
+            var region = bar.Frame.CaptureRegion;
+
+            TestNative.Click(bar.Handle, Center(bar.BarLayout[BarItem.Minimize]));
+            await Task.Delay(300);
+            Assert.Equal(FormWindowState.Minimized, bar.WindowState);
+            Assert.False(bar.Frame.Visible);
+
+            TestNative.Restore(bar.Handle);
+            await Task.Delay(300);
+            Assert.True(bar.Frame.Visible);
+            Assert.Equal(region, bar.Frame.CaptureRegion);
+
+            TestNative.Minimize(bar.Handle); // clicking the taskbar button, or Win+M
+            await Task.Delay(300);
+            Assert.False(bar.Frame.Visible);
+        }
+        finally
+        {
+            bar.Close();
+        }
+    });
+
+    [Fact]
+    public void The_bar_comes_back_in_front_of_the_frame() => Sta.Run(async () =>
+    {
+        var bar = new ControlBarForm(NewSettingsFile());
+        try
+        {
+            bar.Show();
+            await Task.Delay(300);
+            var label = bar.Frame.CurrentLayout.Label;
+            var button = Center(bar.BarLayout[BarItem.Settings]);
+            bar.Location = new Point(label.Left + label.Width / 2 - button.X, label.Top + label.Height / 2 - button.Y); // the button on the size label
+            await Task.Delay(300);
+            var point = bar.PointToScreen(button);
+            Assert.Equal(bar.Handle, TestNative.TopLevelWindowAt(point));
+
+            bar.Hide();
+            Assert.Equal(bar.Frame.Handle, TestNative.TopLevelWindowAt(point)); // the frame is under the button
+            bar.Show();
+            await Task.Delay(300);
+
+            TestNative.Minimize(bar.Handle);
+            await Task.Delay(300);
+            TestNative.Restore(bar.Handle);
+            await Task.Delay(300);
+            Assert.Equal(bar.Handle, TestNative.TopLevelWindowAt(point));
+
+            TestNative.Minimize(bar.Handle);
+            await Task.Delay(300);
+            bar.ToggleRecording(); // the record key brings it back too
+            await Task.Delay(300);
+            Assert.Equal(bar.Handle, TestNative.TopLevelWindowAt(point));
+        }
+        finally
+        {
+            bar.Close();
+            await WaitFor(() => bar.IsDisposed);
+        }
+    });
+
+    [Fact]
+    public void The_bar_cannot_be_minimized_while_recording() => Sta.Run(async () =>
+    {
+        var bar = new ControlBarForm(NewSettingsFile());
+        try
+        {
+            bar.Show();
+            await Task.Delay(300);
+            bar.ToggleRecording();
+            Assert.Contains(BarItem.Minimize, bar.Look.Disabled);
+            await WaitFor(() => !bar.Look.Disabled.Contains(BarItem.Pause));
+
+            TestNative.Minimize(bar.Handle); // clicking the taskbar button, or Win+M
+            await WaitFor(() => bar.WindowState == FormWindowState.Normal);
+            Assert.True(bar.Frame.Visible);
+
+            bar.ToggleRecording();
+            await WaitFor(() => !bar.Look.Recording);
+            Assert.DoesNotContain(BarItem.Minimize, bar.Look.Disabled);
+        }
+        finally
+        {
+            bar.Close();
+            await WaitFor(() => bar.IsDisposed);
+        }
+    });
+
+    [Fact]
+    public void The_record_key_brings_a_minimized_bar_back_and_records() => Sta.Run(async () =>
+    {
+        var bar = new ControlBarForm(NewSettingsFile());
+        try
+        {
+            bar.Show();
+            await Task.Delay(300);
+            TestNative.Minimize(bar.Handle);
+            await Task.Delay(300);
+
+            bar.ToggleRecording(); // what the record key does
+            Assert.Equal(FormWindowState.Normal, bar.WindowState);
+            Assert.True(bar.Frame.Visible);
+            await WaitFor(() => !bar.Look.Disabled.Contains(BarItem.Pause));
+        }
+        finally
+        {
+            bar.Close();
+            await WaitFor(() => bar.IsDisposed);
+        }
+    });
+
+    [Fact]
+    public void The_pick_window_key_brings_a_minimized_bar_back() => Sta.Run(async () =>
+    {
+        var bar = new ControlBarForm(NewSettingsFile());
+        try
+        {
+            bar.Show();
+            await Task.Delay(300);
+            TestNative.Minimize(bar.Handle);
+            await Task.Delay(300);
+
+            SynchronizationContext.Current!.Post(_ => Application.OpenForms.OfType<WindowPicker>().Single().Close(), null);
+            bar.PickWindow(); // what the pick window key does; returns when the posted callback has closed the picker
+            Assert.Equal(FormWindowState.Normal, bar.WindowState);
+            Assert.True(bar.Frame.Visible);
+        }
+        finally
+        {
+            bar.Close();
+        }
+    });
+
+    [Fact]
     public void Without_a_message_there_is_no_status_bubble_and_the_record_button_shows_its_hotkey() => Sta.Run(async () =>
     {
         var bar = new ControlBarForm(NewSettingsFile());
@@ -358,6 +516,33 @@ public class ControlBarTests
         var moved = new Point(bar.Left - 200, bar.Top + 150); // what dragging it does
         bar.Location = moved;
         bar.Close();
+        await Task.Delay(300);
+
+        var again = new ControlBarForm(path);
+        try
+        {
+            again.Show();
+            await Task.Delay(300);
+            Assert.Equal(moved, again.Location);
+        }
+        finally
+        {
+            again.Close();
+        }
+    });
+
+    [Fact]
+    public void A_bar_closed_while_minimized_opens_where_it_was() => Sta.Run(async () =>
+    {
+        string path = NewSettingsFile();
+        var bar = new ControlBarForm(path);
+        bar.Show();
+        await Task.Delay(300);
+        var moved = new Point(bar.Left - 200, bar.Top + 150);
+        bar.Location = moved;
+        TestNative.Minimize(bar.Handle);
+        await Task.Delay(300);
+        bar.Close(); // from the taskbar button's menu
         await Task.Delay(300);
 
         var again = new ControlBarForm(path);

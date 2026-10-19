@@ -53,6 +53,7 @@ internal static class ControlBarPainter
         [BarItem.Folder] = Glyph.Folder,
         [BarItem.Settings] = Glyph.Sliders,
         [BarItem.Help] = Glyph.Help,
+        [BarItem.Minimize] = Glyph.Minimize,
         [BarItem.Close] = Glyph.Close,
     };
 
@@ -103,8 +104,9 @@ internal static class ControlBarPainter
                 using var back = new SolidBrush(look.Pressed == item ? Palette.Pressed : Palette.Hover);
                 g.FillEllipse(back, rect);
             }
-            var ink = item == BarItem.Close ? Palette.Muted : Palette.Ink;
-            Glyphs.Draw(g, glyph, Centered(rect, (item == BarItem.Close ? 16 : 20) * scale), enabled ? ink : Color.FromArgb(77, ink));
+            bool windowButton = item is BarItem.Minimize or BarItem.Close; // gray and smaller, like a window's own
+            var ink = windowButton ? Palette.Muted : Palette.Ink;
+            Glyphs.Draw(g, glyph, Centered(rect, (windowButton ? 16 : 20) * scale), enabled ? ink : Color.FromArgb(77, ink));
         }
         return image;
     }

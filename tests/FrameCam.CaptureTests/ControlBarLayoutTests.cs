@@ -32,6 +32,16 @@ public class ControlBarLayoutTests
     }
 
     [Fact]
+    public void The_minimize_button_sits_between_the_line_and_the_close_button()
+    {
+        var layout = ControlBarLayout.Compute(1f, 92);
+
+        float line = layout.Separators[^1];
+        Assert.True(line < layout[BarItem.Minimize].Left);
+        Assert.Equal(layout[BarItem.Minimize].Right + 4, layout[BarItem.Close].Left);
+    }
+
+    [Fact]
     public void The_pause_button_sits_between_the_record_and_screenshot_buttons()
     {
         var layout = ControlBarLayout.Compute(1f, 92);

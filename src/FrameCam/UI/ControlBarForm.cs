@@ -36,6 +36,7 @@ internal sealed class ControlBarForm : PillBarWindow
     private bool _screenshotHotkeyFailed;
     private bool _pickHotkeyFailed;
     private bool _picking;
+    private bool _minimized;
 
     /// <param name="oldSettingsPath">Read when <paramref name="settingsPath"/> does not exist yet; saving always goes to <paramref name="settingsPath"/>.</param>
     public ControlBarForm(string settingsPath, string? oldSettingsPath = null)
@@ -111,6 +112,7 @@ internal sealed class ControlBarForm : PillBarWindow
             case BarItem.Folder: OpenFolder(); break;
             case BarItem.Settings: OpenSettings(); break;
             case BarItem.Help: OpenHelp(); break;
+            case BarItem.Minimize: WindowState = FormWindowState.Minimized; break;
             case BarItem.Close: Close(); break;
         }
     }
@@ -124,9 +126,37 @@ internal sealed class ControlBarForm : PillBarWindow
         BarItem.Folder => "開啟存檔資料夾",
         BarItem.Settings => "設定",
         BarItem.Help => "操作說明",
+        BarItem.Minimize => "縮到最小",
         BarItem.Close => "結束 FrameCam",
         _ => "",
     };
+
+    /// <summary>
+    /// The frame goes away while the bar is minimized, whether by its button, the taskbar button or Win+M, and
+    /// comes back with it. While recording the bar comes right back instead.
+    /// </summary>
+    protected override void OnResize(EventArgs e)
+    {
+        base.OnResize(e);
+        bool minimized = WindowState == FormWindowState.Minimized;
+        if (minimized == _minimized)
+            return;
+        _minimized = minimized;
+        if (minimized && _frame.Locked)
+            BeginInvoke(Restore);
+        else
+            _frame.Visible = !minimized;
+    }
+
+    /// <summary>
+    /// Brings a minimized bar back, and the frame with it, leaving the keyboard with the program in use. Setting
+    /// WindowState would take the keyboard: a hotkey lets this program become the active one.
+    /// </summary>
+    private void Restore()
+    {
+        if (WindowState == FormWindowState.Minimized)
+            NativeMethods.ShowWindow(Handle, NativeMethods.SW_SHOWNOACTIVATE);
+    }
 
     protected override bool ProcessCmdKey(ref Message msg, Keys keyData) =>
         _frame.TryHandleArrow(keyData) || base.ProcessCmdKey(ref msg, keyData);
@@ -169,6 +199,7 @@ internal sealed class ControlBarForm : PillBarWindow
             StopRecording("");
             return;
         }
+        Restore(); // the frame shows while recording; first, so a message about the folder can be seen too
         if (OutputDirectory.EnsureWritable(_settings.OutputFolder) is { } folderError)
         {
             SetStatus(folderError);
@@ -199,6 +230,7 @@ internal sealed class ControlBarForm : PillBarWindow
         SetRecording(true);
         SetEnabled(BarItem.Size, false);
         SetEnabled(BarItem.Pick, false);
+        SetEnabled(BarItem.Minimize, false);
         SetStatus(_recordingNote.Length == 0 ? "準備錄影…" : $"準備錄影…（{_recordingNote}）");
     }
 
@@ -248,6 +280,7 @@ internal sealed class ControlBarForm : PillBarWindow
         SetEnabled(BarItem.Pause, false); // a failed recording ends without StopRecording
         SetEnabled(BarItem.Size, true);
         SetEnabled(BarItem.Pick, true);
+        SetEnabled(BarItem.Minimize, true);
         SetStatus(message);
         if (_closeAfterRecording)
             Close();
@@ -397,11 +430,12 @@ internal sealed class ControlBarForm : PillBarWindow
         }
     }
 
-    private void PickWindow()
+    internal void PickWindow()
     {
         if (_picking)
             return; // the hotkey pressed again while picking
         _picking = true;
+        Restore(); // to see where the frame lands
         try
         {
             using var picker = new WindowPicker();
@@ -498,8 +532,10 @@ internal sealed class ControlBarForm : PillBarWindow
     private void SaveSettings()
     {
         var r = _frame.CaptureRegion;
-        // The window is larger than the bar to hold its shadow; keep where the bar itself is.
-        var bar = new PixelPoint(Left + (int)BarLayout.Bar.Left, Top + (int)BarLayout.Bar.Top);
+        // The window is larger than the bar to hold its shadow; keep where the bar itself is. A minimized
+        // window sits far off the screen, so then keep where it was before.
+        var window = WindowState == FormWindowState.Minimized ? RestoreBounds.Location : Location;
+        var bar = new PixelPoint(window.X + (int)BarLayout.Bar.Left, window.Y + (int)BarLayout.Bar.Top);
         _settings = _settings with
         {
             LastRegion = new SavedRegion(_frame.Monitor.DeviceName, r.Left, r.Top, r.Width, r.Height),

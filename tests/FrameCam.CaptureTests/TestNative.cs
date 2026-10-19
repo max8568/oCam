@@ -92,6 +92,22 @@ internal static class TestNative
     /// <summary>Whether the window stays above windows that are not "always on top" (WS_EX_TOPMOST).</summary>
     public static bool IsTopmost(IntPtr hwnd) => (GetWindowLong(hwnd, -20) & 0x8) != 0;
 
+    /// <summary>Whether the window is left off the taskbar and Alt+Tab (WS_EX_TOOLWINDOW).</summary>
+    public static bool IsToolWindow(IntPtr hwnd) => (GetWindowLong(hwnd, -20) & 0x80) != 0;
+
+    /// <summary>Whether clicking the window's taskbar button minimizes it (WS_MINIMIZEBOX).</summary>
+    public static bool HasMinimizeBox(IntPtr hwnd) => (GetWindowLong(hwnd, -16) & 0x00020000) != 0;
+
+    [DllImport("user32.dll")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool ShowWindow(IntPtr hwnd, int command);
+
+    /// <summary>Minimizes the window from outside the program, as Win+M does.</summary>
+    public static void Minimize(IntPtr hwnd) => ShowWindow(hwnd, 6); // SW_MINIMIZE
+
+    /// <summary>Brings a minimized window back, as clicking its taskbar button does.</summary>
+    public static void Restore(IntPtr hwnd) => ShowWindow(hwnd, 9); // SW_RESTORE
+
     [DllImport("user32.dll")]
     [return: MarshalAs(UnmanagedType.Bool)]
     private static extern bool GetWindowDisplayAffinity(IntPtr hwnd, out uint affinity);
