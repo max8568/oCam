@@ -266,6 +266,21 @@ public class CustomSizesFormTests
     });
 
     [Fact]
+    public void Cancel_is_a_small_round_icon_so_the_label_box_stays_wide() => Sta.Run(async () =>
+    {
+        using var dialog = await Show([new CustomSize("a", 800, 600)]);
+        int adding = Box(dialog, "標籤").Parent!.Width;
+        ClickRow(dialog, 0);
+        var cancel = (RoundButton)Button(dialog, "取消");
+
+        Assert.Equal("", cancel.Text);
+        Assert.NotNull(cancel.Glyph);
+        Assert.Equal(cancel.Height, cancel.Width);
+        Assert.Equal(dialog.LogicalToDeviceUnits(60), Button(dialog, "儲存").Width); // as wide as 新增
+        Assert.Equal(adding - cancel.Width - dialog.LogicalToDeviceUnits(6), Box(dialog, "標籤").Parent!.Width);
+    });
+
+    [Fact]
     public void Save_and_cancel_fit_on_the_line_of_the_boxes() => Sta.Run(async () =>
     {
         using var dialog = await Show([new CustomSize("a", 800, 600)]);
@@ -358,7 +373,8 @@ public class CustomSizesFormTests
 
     private static TextBox Box(Control dialog, string name) => All<TextBox>(dialog).Single(b => b.AccessibleName == name);
 
-    private static Button Button(Control dialog, string text) => All<Button>(dialog).Single(b => b.Text == text);
+    /// <summary>The button showing this text, or for an icon button, named it.</summary>
+    private static Button Button(Control dialog, string text) => All<Button>(dialog).Single(b => b.Text == text || b.Text == "" && b.AccessibleName == text);
 
     private static ListBox List(Control dialog) => All<ListBox>(dialog).Single();
 }

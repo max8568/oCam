@@ -5,7 +5,7 @@ namespace FrameCam.UI;
 /// <summary>
 /// The custom sizes dialog (spec 7.5): a row to add a size at the top, then the saved sizes, each with an X
 /// at its end that deletes it, and a gray bar at the bottom with the count and 完成. Clicking a saved size puts
-/// it in the top row to change, where 新增 becomes 儲存 next to a 取消. Changes count right away; however the
+/// it in the top row to change, where 新增 becomes 儲存 next to a round 取消 arrow. Changes count right away; however the
 /// dialog is closed, the caller keeps <see cref="Sizes"/>.
 /// </summary>
 internal sealed class CustomSizesForm : LightDialog
@@ -15,7 +15,7 @@ internal sealed class CustomSizesForm : LightDialog
     private const int SizeColumn = 104; // "8192 × 8192" fits
     private const int RemoveCenter = 16; // the X's center, from the row's right end
     private const int RemoveRadius = 12;
-    private const int CancelRoom = 62; // the boxes move left this much to make room for 取消
+    private const int CancelRoom = 44; // the boxes move left this much to make room for 取消
 
     private readonly List<CustomSize> _sizes;
     private readonly PixelSize _current;
@@ -35,7 +35,7 @@ internal sealed class CustomSizesForm : LightDialog
     private readonly TextBox _height = new() { BorderStyle = BorderStyle.None, AccessibleName = "高" };
     private readonly Label _message = new() { AutoSize = true, Location = new Point(34, 124), ForeColor = Palette.ErrorText, Visible = false };
     private readonly RoundButton _add = new() { Text = "新增", Bounds = new Rectangle(378, 80, 60, 38) };
-    private readonly RoundButton _cancel = new() { Text = "取消", Bounds = new Rectangle(382, 80, 56, 38), Visible = false };
+    private readonly RoundButton _cancel = new() { Glyph = Glyph.Undo, AccessibleName = "取消", Bounds = new Rectangle(400, 80, 38, 38), Visible = false };
     private readonly FieldBox _labelField;
     private readonly Control[] _afterLabel; // move left with the add button while a size is being changed
     private int _editing = -1; // the row in the top row to change, or -1 while adding
