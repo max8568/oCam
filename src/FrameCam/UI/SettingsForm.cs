@@ -26,7 +26,7 @@ internal sealed class SettingsForm : LightDialog
     private int _framesPerSecond;
 
     public SettingsForm(AppSettings settings, bool recordHotkeyFailed, bool screenshotHotkeyFailed, bool pickHotkeyFailed = false, bool pauseHotkeyFailed = false)
-        : base("設定", "FrameCam 設定", new Size(420, 594))
+        : base("設定", "FrameCam 設定", new Size(420, 558))
     {
         SuspendLayout();
 
@@ -76,8 +76,8 @@ internal sealed class SettingsForm : LightDialog
         SelectFramesPerSecond(settings.FramesPerSecond);
 
         // In the names' column, one row under the frame rate; the box starts where the names do.
-        _hideCursor.Bounds = new Rectangle(20, 443, 200, 26);
-        _doNotDisturb.Bounds = new Rectangle(20, 479, 200, 26);
+        _hideCursor.Bounds = new Rectangle(20, 443, 140, 26);
+        _doNotDisturb.Bounds = new Rectangle(160, 443, 160, 26); // on the same row
 
         var ok = new RoundButton { Text = "確定", DialogResult = DialogResult.OK, Bounds = new Rectangle(314, 14, 84, 36) };
         ok.SetColors(Palette.Accent, Palette.AccentHover, Palette.AccentPressed, Color.White);
@@ -96,7 +96,7 @@ internal sealed class SettingsForm : LightDialog
             SettingName("每秒格數", fps), fps,
             _hideCursor,
             _doNotDisturb,
-            BottomBar(420, 530, Version(), cancel, ok), close,
+            BottomBar(420, 494, Version(), cancel, ok), close,
         });
         ResumeLayout(false);
         PerformLayout();

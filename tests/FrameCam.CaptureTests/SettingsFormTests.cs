@@ -170,16 +170,20 @@ public class SettingsFormTests
     });
 
     [Fact]
-    public void The_do_not_disturb_box_sits_under_the_hide_cursor_box_above_the_bottom_bar() => Sta.Run(async () =>
+    public void The_do_not_disturb_box_sits_beside_the_hide_cursor_box() => Sta.Run(async () =>
     {
         using var dialog = await Show(new AppSettings(), false, false);
         var hideCursor = All<CheckBox>(dialog).Single(b => b.Text == "隱藏滑鼠游標");
         var box = All<CheckBox>(dialog).Single(b => b.Text == "錄影時開啟勿打擾");
 
-        Assert.Equal(hideCursor.Left, box.Left);
-        Assert.Equal(hideCursor.Size, box.Size);
-        Assert.True(box.Top > hideCursor.Bottom, $"the box starts at {box.Top}, the hide cursor box ends at {hideCursor.Bottom}");
-        Assert.True(box.Bottom < BottomBar(dialog, "確定").Top, $"the box ends at {box.Bottom}");
+        Assert.Equal((hideCursor.Top, hideCursor.Height), (box.Top, box.Height));
+        Assert.True(box.Left >= hideCursor.Right, $"the box starts at {box.Left}, the hide cursor box ends at {hideCursor.Right}");
+        Assert.True(box.Right <= Field(dialog, "存檔資料夾").Right, $"the box ends at {box.Right}, past the fields");
+        foreach (var check in new[] { hideCursor, box })
+        {
+            int textRight = dialog.LogicalToDeviceUnits(30) + TextRenderer.MeasureText(check.Text, check.Font, Size.Empty, TextFormatFlags.NoPadding).Width;
+            Assert.True(textRight <= check.Width, $"{check.Text}: the text needs {textRight}, the box is {check.Width} wide");
+        }
     });
 
     [Fact]
