@@ -161,6 +161,127 @@ public class CustomSizesFormTests
     });
 
     [Fact]
+    public void Clicking_a_row_puts_its_size_in_the_boxes_to_change() => Sta.Run(async () =>
+    {
+        using var dialog = await Show([new CustomSize("a", 800, 600), new CustomSize("直播", 1600, 900)]);
+        ClickRow(dialog, 1);
+
+        Assert.Equal("直播", Box(dialog, "標籤").Text);
+        Assert.Equal("1600", Box(dialog, "寬").Text);
+        Assert.Equal("900", Box(dialog, "高").Text);
+        Assert.True(Button(dialog, "儲存").Visible);
+        Assert.True(Button(dialog, "取消").Visible);
+        Assert.DoesNotContain(All<Button>(dialog), b => b.Text == "新增");
+    });
+
+    [Fact]
+    public void Saving_replaces_the_row_in_its_place() => Sta.Run(async () =>
+    {
+        using var dialog = await Show([new CustomSize("a", 800, 600), new CustomSize("b", 640, 480), new CustomSize("c", 320, 240)]);
+        ClickRow(dialog, 1);
+        Type(dialog, "新的", "1024", "768");
+        Button(dialog, "儲存").PerformClick();
+
+        Assert.Equal([new CustomSize("a", 800, 600), new CustomSize("新的", 1024, 768), new CustomSize("c", 320, 240)], dialog.Sizes);
+        Assert.Equal(["a", "新的", "c"], List(dialog).Items.Cast<CustomSize>().Select(c => c.Label));
+        Assert.True(Button(dialog, "新增").Visible); // back to adding
+        Assert.False(Button(dialog, "取消").Visible);
+        Assert.Equal("", Box(dialog, "標籤").Text);
+        Assert.Equal("1280", Box(dialog, "寬").Text);
+        Assert.Equal("720", Box(dialog, "高").Text);
+    });
+
+    [Fact]
+    public void Cancel_leaves_the_row_as_it_was_and_goes_back_to_adding() => Sta.Run(async () =>
+    {
+        using var dialog = await Show([new CustomSize("a", 800, 600)]);
+        ClickRow(dialog, 0);
+        Type(dialog, "b", "640", "480");
+        Button(dialog, "取消").PerformClick();
+
+        Assert.Equal([new CustomSize("a", 800, 600)], dialog.Sizes);
+        Assert.True(Button(dialog, "新增").Visible);
+        Assert.False(Button(dialog, "取消").Visible);
+        Assert.Equal("", Box(dialog, "標籤").Text);
+        Assert.Equal("1280", Box(dialog, "寬").Text);
+        Assert.Equal("720", Box(dialog, "高").Text);
+    });
+
+    [Fact]
+    public void Esc_while_changing_a_size_stops_changing_and_keeps_the_dialog_open() => Sta.Run(async () =>
+    {
+        using var dialog = await Show([new CustomSize("a", 800, 600)]);
+        ClickRow(dialog, 0);
+        Type(dialog, "b", "640", "480");
+        PressIn(Box(dialog, "寬"), Keys.Escape);
+
+        Assert.Equal(DialogResult.None, dialog.DialogResult); // 完成 or the X would have set it
+        Assert.Equal([new CustomSize("a", 800, 600)], dialog.Sizes);
+        Assert.True(Button(dialog, "新增").Visible);
+        Assert.Equal("1280", Box(dialog, "寬").Text);
+    });
+
+    [Fact]
+    public void A_size_can_be_changed_when_20_are_saved() => Sta.Run(async () =>
+    {
+        var twenty = Enumerable.Range(1, 20).Select(i => new CustomSize($"s{i}", 100 + 2 * i, 100)).ToArray();
+        using var dialog = await Show(twenty);
+        ClickRow(dialog, 0);
+        Type(dialog, "改過", "800", "600");
+        Button(dialog, "儲存").PerformClick();
+
+        Assert.Equal(20, dialog.Sizes.Count);
+        Assert.Equal(new CustomSize("改過", 800, 600), dialog.Sizes[0]);
+    });
+
+    [Fact]
+    public void A_changed_size_is_not_compared_with_itself_but_is_with_the_others() => Sta.Run(async () =>
+    {
+        using var dialog = await Show([new CustomSize("a", 800, 600), new CustomSize("b", 640, 480)]);
+        ClickRow(dialog, 0);
+        Button(dialog, "儲存").PerformClick(); // nothing changed
+        Assert.Equal([new CustomSize("a", 800, 600), new CustomSize("b", 640, 480)], dialog.Sizes);
+        Assert.DoesNotContain(All<Label>(dialog), l => l.Visible && l.Text == "已經有一樣的自訂尺寸");
+
+        ClickRow(dialog, 0);
+        Type(dialog, "b", "640", "480");
+        Button(dialog, "儲存").PerformClick();
+        Assert.Equal([new CustomSize("a", 800, 600), new CustomSize("b", 640, 480)], dialog.Sizes);
+        Assert.Contains(All<Label>(dialog), l => l.Visible && l.Text == "已經有一樣的自訂尺寸");
+    });
+
+    [Fact]
+    public void Deleting_the_row_being_changed_stops_changing() => Sta.Run(async () =>
+    {
+        using var dialog = await Show([new CustomSize("a", 800, 600), new CustomSize("b", 640, 480)]);
+        var list = List(dialog);
+        ClickRow(dialog, 1);
+        Assert.True(Button(dialog, "儲存").Visible);
+        var row = list.GetItemRectangle(1);
+        TestNative.Click(list.Handle, new Point(row.Right - list.LogicalToDeviceUnits(16), row.Top + row.Height / 2));
+
+        Assert.Equal([new CustomSize("a", 800, 600)], dialog.Sizes);
+        Assert.True(Button(dialog, "新增").Visible);
+        Assert.Equal("", Box(dialog, "標籤").Text);
+    });
+
+    [Fact]
+    public void Save_and_cancel_fit_on_the_line_of_the_boxes() => Sta.Run(async () =>
+    {
+        using var dialog = await Show([new CustomSize("a", 800, 600)]);
+        ClickRow(dialog, 0);
+        var save = Button(dialog, "儲存");
+        var cancel = Button(dialog, "取消");
+        var height = Box(dialog, "高").Parent!.Bounds;
+
+        Assert.True(height.Right < save.Left, "the height box ends before 儲存");
+        Assert.True(save.Right < cancel.Left, "儲存 is on the left of 取消");
+        Assert.True(cancel.Right <= dialog.ClientSize.Width - dialog.LogicalToDeviceUnits(22), "取消 keeps the right margin");
+        Assert.InRange(cancel.Top + cancel.Height / 2, height.Top, height.Bottom);
+        Assert.True(Box(dialog, "標籤").Parent!.Right < Box(dialog, "寬").Parent!.Left, "the label box ends before the width box");
+    });
+
+    [Fact]
     public void The_list_has_a_title_above_it_clear_of_the_message() => Sta.Run(async () =>
     {
         using var dialog = await Show([]);
@@ -217,6 +338,22 @@ public class CustomSizesFormTests
         Box(dialog, "標籤").Text = label;
         Box(dialog, "寬").Text = width;
         Box(dialog, "高").Text = height;
+    }
+
+    /// <summary>A click on the row's size, clear of its X.</summary>
+    private static void ClickRow(CustomSizesForm dialog, int index)
+    {
+        var list = List(dialog);
+        var row = list.GetItemRectangle(index);
+        TestNative.Click(list.Handle, new Point(row.Left + list.LogicalToDeviceUnits(20), row.Top + row.Height / 2));
+    }
+
+    /// <summary>A key going down in the box the way the message loop hands it over, through ProcessCmdKey.</summary>
+    private static void PressIn(Control box, Keys key)
+    {
+        const int WM_KEYDOWN = 0x0100;
+        var msg = Message.Create(box.Handle, WM_KEYDOWN, (IntPtr)(int)key, IntPtr.Zero);
+        box.PreProcessMessage(ref msg);
     }
 
     private static TextBox Box(Control dialog, string name) => All<TextBox>(dialog).Single(b => b.AccessibleName == name);

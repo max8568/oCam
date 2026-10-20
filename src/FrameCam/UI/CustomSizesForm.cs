@@ -4,8 +4,9 @@ namespace FrameCam.UI;
 
 /// <summary>
 /// The custom sizes dialog (spec 7.5): a row to add a size at the top, then the saved sizes, each with an X
-/// at its end that deletes it, and a gray bar at the bottom with the count and 完成. Changes count right away;
-/// however the dialog is closed, the caller keeps <see cref="Sizes"/>.
+/// at its end that deletes it, and a gray bar at the bottom with the count and 完成. Clicking a saved size puts
+/// it in the top row to change, where 新增 becomes 儲存 next to a 取消. Changes count right away; however the
+/// dialog is closed, the caller keeps <see cref="Sizes"/>.
 /// </summary>
 internal sealed class CustomSizesForm : LightDialog
 {
@@ -14,8 +15,10 @@ internal sealed class CustomSizesForm : LightDialog
     private const int SizeColumn = 104; // "8192 × 8192" fits
     private const int RemoveCenter = 16; // the X's center, from the row's right end
     private const int RemoveRadius = 12;
+    private const int CancelRoom = 62; // the boxes move left this much to make room for 取消
 
     private readonly List<CustomSize> _sizes;
+    private readonly PixelSize _current;
     private readonly ListBox _list = new()
     {
         BorderStyle = BorderStyle.None,
@@ -31,6 +34,11 @@ internal sealed class CustomSizesForm : LightDialog
     private readonly TextBox _width = new() { BorderStyle = BorderStyle.None, AccessibleName = "寬" };
     private readonly TextBox _height = new() { BorderStyle = BorderStyle.None, AccessibleName = "高" };
     private readonly Label _message = new() { AutoSize = true, Location = new Point(34, 124), ForeColor = Palette.ErrorText, Visible = false };
+    private readonly RoundButton _add = new() { Text = "新增", Bounds = new Rectangle(378, 80, 60, 38) };
+    private readonly RoundButton _cancel = new() { Text = "取消", Bounds = new Rectangle(382, 80, 56, 38), Visible = false };
+    private readonly FieldBox _labelField;
+    private readonly Control[] _afterLabel; // move left with the add button while a size is being changed
+    private int _editing = -1; // the row in the top row to change, or -1 while adding
     private int _hoverRow = -1;
     private bool _hoverRemove;
     private int _pressedRemove = -1;
@@ -40,14 +48,22 @@ internal sealed class CustomSizesForm : LightDialog
         : base("自訂尺寸", "FrameCam 自訂尺寸", new Size(460, 470))
     {
         _sizes = [.. sizes];
+        _current = current;
         SuspendLayout();
 
         _width.Text = current.Width.ToString();
         _height.Text = current.Height.ToString();
         var times = new Label { Text = "×", TextAlign = ContentAlignment.MiddleCenter, ForeColor = Palette.Muted, Bounds = new Rectangle(274, 80, 18, 38) };
-        var add = new RoundButton { Text = "新增", Bounds = new Rectangle(378, 80, 60, 38) };
-        add.SetColors(Palette.Accent, Palette.AccentHover, Palette.AccentPressed, Color.White);
-        add.Click += (_, _) => AddTyped();
+        _add.SetColors(Palette.Accent, Palette.AccentHover, Palette.AccentPressed, Color.White);
+        _add.Click += (_, _) => SaveTyped();
+        _cancel.SetColors(Palette.Field, Palette.Pressed, Palette.FieldButtonHover, Palette.Ink);
+        _cancel.Click += (_, _) => StopEditing();
+        _labelField = FieldBox.Around(new Rectangle(22, 80, 168, 38), _label);
+        var widthCaption = Caption("寬", 210, 58);
+        var widthField = FieldBox.Around(new Rectangle(198, 80, 76, 38), _width);
+        var heightCaption = Caption("高", 304, 58);
+        var heightField = FieldBox.Around(new Rectangle(292, 80, 76, 38), _height);
+        _afterLabel = [widthCaption, widthField, times, heightCaption, heightField, _add];
 
         var list = new FieldBox { Bounds = new Rectangle(22, 174, 416, 212), CornerRadius = 12, Bordered = true, BackColor = Palette.Surface };
         _list.Bounds = new Rectangle(5, 5, 406, 202); // inside the round corners
@@ -62,8 +78,15 @@ internal sealed class CustomSizesForm : LightDialog
         {
             int row = _pressedRemove;
             _pressedRemove = -1;
-            if (row >= 0 && e.Button == MouseButtons.Left && RemoveAt(e.Location) == row)
-                Delete(row, selected: -1);
+            if (e.Button != MouseButtons.Left)
+                return;
+            if (row >= 0)
+            {
+                if (RemoveAt(e.Location) == row)
+                    Delete(row, selected: -1);
+            }
+            else if (_list.IndexFromPoint(e.Location) is var clicked and >= 0 && clicked < _sizes.Count && clicked != _editing)
+                StartEditing(clicked); // the row already being changed keeps what was typed
         };
         _list.KeyDown += (_, e) =>
         {
@@ -76,16 +99,16 @@ internal sealed class CustomSizesForm : LightDialog
         var done = new RoundButton { Text = "完成", DialogResult = DialogResult.OK, Bounds = new Rectangle(354, 14, 84, 36) };
         done.SetColors(Palette.Accent, Palette.AccentHover, Palette.AccentPressed, Color.White);
         var bar = BottomBar(460, 406, _count, done);
-        AcceptButton = add; // Enter in the boxes adds what was typed
+        AcceptButton = _add; // Enter in the boxes adds or saves what was typed
         CancelButton = done;
 
         Controls.AddRange(new Control[]
         {
-            Caption("標籤（可以不填）", 34, 58), FieldBox.Around(new Rectangle(22, 80, 168, 38), _label),
-            Caption("寬", 210, 58), FieldBox.Around(new Rectangle(198, 80, 76, 38), _width),
+            Caption("標籤（可以不填）", 34, 58), _labelField,
+            widthCaption, widthField,
             times,
-            Caption("高", 304, 58), FieldBox.Around(new Rectangle(292, 80, 76, 38), _height),
-            add, _message,
+            heightCaption, heightField,
+            _add, _cancel, _message,
             Caption("已儲存的尺寸", 34, 152), list, bar, CloseButton(460, DialogResult.Cancel),
         });
         ShowSizes(selected: -1);
@@ -99,12 +122,24 @@ internal sealed class CustomSizesForm : LightDialog
         _list.ItemHeight = LogicalToDeviceUnits(RowHeight); // owner-drawn rows do not grow with the display scale by themselves
     }
 
-    /// <summary>The saved sizes, with this dialog's additions and deletions.</summary>
+    /// <summary>Esc while a size is being changed stops changing it, rather than closing the dialog.</summary>
+    protected override bool ProcessDialogKey(Keys keyData)
+    {
+        if (keyData == Keys.Escape && _editing >= 0)
+        {
+            StopEditing();
+            return true;
+        }
+        return base.ProcessDialogKey(keyData);
+    }
+
+    /// <summary>The saved sizes, with this dialog's additions, changes and deletions.</summary>
     public IReadOnlyList<CustomSize> Sizes => _sizes.ToArray();
 
-    private void AddTyped()
+    /// <summary>新增, or 儲存 while a size is being changed.</summary>
+    private void SaveTyped()
     {
-        if (_sizes.Count >= CustomSize.MaxCount)
+        if (_editing < 0 && _sizes.Count >= CustomSize.MaxCount)
         {
             Say($"最多存 {CustomSize.MaxCount} 個自訂尺寸，請先刪掉一些");
             return;
@@ -115,9 +150,16 @@ internal sealed class CustomSizesForm : LightDialog
             Say(error!);
             return;
         }
-        if (_sizes.Contains(size))
+        if (_sizes.Where((_, i) => i != _editing).Contains(size))
         {
             Say("已經有一樣的自訂尺寸");
+            return;
+        }
+        if (_editing >= 0)
+        {
+            _sizes[_editing] = size;
+            _list.Items[_editing] = size;
+            StopEditing();
             return;
         }
         _sizes.Add(size);
@@ -128,8 +170,50 @@ internal sealed class CustomSizesForm : LightDialog
         _label.Focus();
     }
 
+    private void StartEditing(int row)
+    {
+        if (_editing < 0)
+            ShowSaveAndCancel(true);
+        _editing = row;
+        var size = _sizes[row];
+        _label.Text = size.Label;
+        _width.Text = size.Width.ToString();
+        _height.Text = size.Height.ToString();
+        Say(null);
+        _list.Invalidate();
+    }
+
+    /// <summary>Back to adding, with the boxes as the dialog opened.</summary>
+    private void StopEditing()
+    {
+        _editing = -1;
+        ShowSaveAndCancel(false);
+        _label.Text = "";
+        _width.Text = _current.Width.ToString();
+        _height.Text = _current.Height.ToString();
+        Say(null);
+        _list.Invalidate();
+    }
+
+    /// <summary>新增 becomes 儲存 and 取消 shows; the label box narrows, and the boxes after it move left, to make room.</summary>
+    private void ShowSaveAndCancel(bool show)
+    {
+        int room = LogicalToDeviceUnits(CancelRoom) * (show ? 1 : -1);
+        _labelField.Width -= room;
+        _labelField.Invalidate(); // a panel does not repaint by itself when it narrows, and would keep the square cut of its old shape
+        _label.Width -= room;
+        foreach (var control in _afterLabel)
+            control.Left -= room;
+        _add.Text = show ? "儲存" : "新增";
+        _cancel.Visible = show;
+    }
+
     private void Delete(int index, int selected)
     {
+        if (index == _editing)
+            StopEditing();
+        else if (index < _editing)
+            _editing--;
         _sizes.RemoveAt(index);
         ShowSizes(selected);
         Say(null);
@@ -195,7 +279,7 @@ internal sealed class CustomSizesForm : LightDialog
         }
         g.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
         bool selected = (e.State & DrawItemState.Selected) != 0 && _list.Focused;
-        if (e.Index == _hoverRow || selected)
+        if (e.Index == _hoverRow || selected || e.Index == _editing)
         {
             using var row = new SolidBrush(Palette.Hover);
             using var shape = Shapes.Rounded(RectangleF.Inflate(e.Bounds, 0, -2), LogicalToDeviceUnits(10));
