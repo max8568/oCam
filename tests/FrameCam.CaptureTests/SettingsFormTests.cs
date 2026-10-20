@@ -178,6 +178,7 @@ public class SettingsFormTests
 
         Assert.Equal((hideCursor.Top, hideCursor.Height), (box.Top, box.Height));
         Assert.True(box.Left >= hideCursor.Right, $"the box starts at {box.Left}, the hide cursor box ends at {hideCursor.Right}");
+        Assert.InRange(box.Left, dialog.ClientSize.Width / 2 - 1, dialog.ClientSize.Width / 2 + 1); // each gets half the row
         Assert.True(box.Right <= Field(dialog, "存檔資料夾").Right, $"the box ends at {box.Right}, past the fields");
         foreach (var check in new[] { hideCursor, box })
         {

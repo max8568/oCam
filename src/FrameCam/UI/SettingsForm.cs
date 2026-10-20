@@ -77,7 +77,7 @@ internal sealed class SettingsForm : LightDialog
 
         // In the names' column, one row under the frame rate; the box starts where the names do.
         _hideCursor.Bounds = new Rectangle(20, 443, 140, 26);
-        _doNotDisturb.Bounds = new Rectangle(160, 443, 160, 26); // on the same row
+        _doNotDisturb.Bounds = new Rectangle(210, 443, 160, 26); // on the same row, from the middle
 
         var ok = new RoundButton { Text = "確定", DialogResult = DialogResult.OK, Bounds = new Rectangle(314, 14, 84, 36) };
         ok.SetColors(Palette.Accent, Palette.AccentHover, Palette.AccentPressed, Color.White);
