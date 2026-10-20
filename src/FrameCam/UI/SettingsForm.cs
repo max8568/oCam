@@ -4,7 +4,7 @@ namespace FrameCam.UI;
 
 /// <summary>
 /// The settings dialog (spec 8.5): save folder, the hotkeys for recording, pausing, screenshots and picking a window,
-/// frames per second, hiding the cursor in videos. Design 21: round fields,
+/// frames per second, hiding the cursor in videos, do not disturb while recording. Design 21: round fields,
 /// and 30 / 60 as two buttons. A hotkey that could not be registered gets a red field and a note under it
 /// until another key is picked. The bottom bar shows FrameCam's version on the left.
 /// </summary>
@@ -22,15 +22,17 @@ internal sealed class SettingsForm : LightDialog
     private readonly RoundButton _fps30 = new() { Text = "30", AccessibleName = "每秒 30 格" };
     private readonly RoundButton _fps60 = new() { Text = "60", AccessibleName = "每秒 60 格" };
     private readonly RoundCheckBox _hideCursor = new() { Text = "隱藏滑鼠游標", ForeColor = Palette.Muted };
+    private readonly RoundCheckBox _doNotDisturb = new() { Text = "錄影時開啟勿打擾", ForeColor = Palette.Muted };
     private int _framesPerSecond;
 
     public SettingsForm(AppSettings settings, bool recordHotkeyFailed, bool screenshotHotkeyFailed, bool pickHotkeyFailed = false, bool pauseHotkeyFailed = false)
-        : base("設定", "FrameCam 設定", new Size(420, 558))
+        : base("設定", "FrameCam 設定", new Size(420, 594))
     {
         SuspendLayout();
 
         _folder.Text = settings.OutputFolder;
         _hideCursor.Checked = settings.HideCursor;
+        _doNotDisturb.Checked = settings.DoNotDisturbWhileRecording;
         if (HotkeyText.TryParse(settings.RecordHotkey, out var record))
             _recordKey.Hotkey = record;
         if (HotkeyText.TryParse(settings.PauseHotkey, out var pause, allowSpace: true))
@@ -75,6 +77,7 @@ internal sealed class SettingsForm : LightDialog
 
         // In the names' column, one row under the frame rate; the box starts where the names do.
         _hideCursor.Bounds = new Rectangle(20, 443, 200, 26);
+        _doNotDisturb.Bounds = new Rectangle(20, 479, 200, 26);
 
         var ok = new RoundButton { Text = "確定", DialogResult = DialogResult.OK, Bounds = new Rectangle(314, 14, 84, 36) };
         ok.SetColors(Palette.Accent, Palette.AccentHover, Palette.AccentPressed, Color.White);
@@ -92,7 +95,8 @@ internal sealed class SettingsForm : LightDialog
             SettingName("選視窗快捷鍵", pickField), pickField, pickNote,
             SettingName("每秒格數", fps), fps,
             _hideCursor,
-            BottomBar(420, 494, Version(), cancel, ok), close,
+            _doNotDisturb,
+            BottomBar(420, 530, Version(), cancel, ok), close,
         });
         ResumeLayout(false);
         PerformLayout();
@@ -108,6 +112,7 @@ internal sealed class SettingsForm : LightDialog
         PickHotkey = HotkeyText.Format(_pickKey.Hotkey),
         FramesPerSecond = _framesPerSecond,
         HideCursor = _hideCursor.Checked,
+        DoNotDisturbWhileRecording = _doNotDisturb.Checked,
     };
 
     private void SelectFramesPerSecond(int fps)

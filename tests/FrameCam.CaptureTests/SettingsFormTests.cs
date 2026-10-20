@@ -157,6 +157,32 @@ public class SettingsFormTests
     });
 
     [Fact]
+    public void The_do_not_disturb_box_starts_unchecked_and_is_saved() => Sta.Run(async () =>
+    {
+        var original = new AppSettings();
+        using var dialog = await Show(original, false, false);
+        var box = All<CheckBox>(dialog).Single(b => b.Text == "錄影時開啟勿打擾");
+        Assert.False(box.Checked);
+
+        TestNative.Press(box.Handle, Keys.Space);
+
+        Assert.True(dialog.ToSettings(original).DoNotDisturbWhileRecording);
+    });
+
+    [Fact]
+    public void The_do_not_disturb_box_sits_under_the_hide_cursor_box_above_the_bottom_bar() => Sta.Run(async () =>
+    {
+        using var dialog = await Show(new AppSettings(), false, false);
+        var hideCursor = All<CheckBox>(dialog).Single(b => b.Text == "隱藏滑鼠游標");
+        var box = All<CheckBox>(dialog).Single(b => b.Text == "錄影時開啟勿打擾");
+
+        Assert.Equal(hideCursor.Left, box.Left);
+        Assert.Equal(hideCursor.Size, box.Size);
+        Assert.True(box.Top > hideCursor.Bottom, $"the box starts at {box.Top}, the hide cursor box ends at {hideCursor.Bottom}");
+        Assert.True(box.Bottom < BottomBar(dialog, "確定").Top, $"the box ends at {box.Bottom}");
+    });
+
+    [Fact]
     public void A_failed_pick_window_key_gets_its_note_above_the_frame_rate() => Sta.Run(async () =>
     {
         using var dialog = new SettingsForm(new AppSettings(), false, false, pickHotkeyFailed: true);

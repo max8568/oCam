@@ -29,6 +29,14 @@ public class HelpFormTests
     }
 
     [Fact]
+    public void The_manual_says_settings_can_turn_on_do_not_disturb_while_recording()
+    {
+        var text = string.Join("\n", HelpText.Blocks(new AppSettings()).Select(b => b.Text));
+
+        Assert.Contains("錄影時要不要開勿打擾", text);
+    }
+
+    [Fact]
     public void A_manual_longer_than_its_view_scrolls_with_the_mouse_wheel() => Sta.Run(async () =>
     {
         var blocks = Enumerable.Range(1, 60).Select(i => new HelpBlock(HelpKind.Bullet, $"第 {i} 行")).ToList();

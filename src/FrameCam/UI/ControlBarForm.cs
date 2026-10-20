@@ -19,6 +19,7 @@ internal sealed class ControlBarForm : PillBarWindow
     private readonly MagnifierWindow _magnifier;
     private readonly IScreenRecorder _recorder = new ScreenRecorderLibRecorder();
     private readonly HotkeyManager _hotkeys = new();
+    private readonly IDoNotDisturb _doNotDisturb;
 
     private readonly System.Windows.Forms.Timer _elapsedTimer = new() { Interval = 500 };
     private readonly System.Windows.Forms.Timer _flashTimer = new() { Interval = 2000 };
@@ -39,9 +40,11 @@ internal sealed class ControlBarForm : PillBarWindow
     private bool _minimized;
 
     /// <param name="oldSettingsPath">Read when <paramref name="settingsPath"/> does not exist yet; saving always goes to <paramref name="settingsPath"/>.</param>
-    public ControlBarForm(string settingsPath, string? oldSettingsPath = null)
+    /// <param name="doNotDisturb">Windows' own unless a test stands in for it.</param>
+    public ControlBarForm(string settingsPath, string? oldSettingsPath = null, IDoNotDisturb? doNotDisturb = null)
     {
         _settingsPath = settingsPath;
+        _doNotDisturb = doNotDisturb ?? new WindowsDoNotDisturb();
         (_settings, string? settingsError) = SettingsStore.Load(settingsPath, oldSettingsPath);
         var (region, monitor) = RegionPlacement.Restore(_settings.LastRegion, Screens.All());
         _frame = new FrameWindow(region, monitor) { SnapSource = WindowEnumerator.SnapTargetsFor };
@@ -98,6 +101,9 @@ internal sealed class ControlBarForm : PillBarWindow
         }
         _frame.Show();
         SystemEvents.DisplaySettingsChanged += OnDisplaySettingsChanged;
+        // Still noted from a recording FrameCam crashed in. After the bar is placed: this saves the settings.
+        if (TurnOffDoNotDisturb("") is { Length: > 0 } note)
+            SetStatus(note);
     }
 
     protected override void OnItemClick(BarItem item)
@@ -207,6 +213,8 @@ internal sealed class ControlBarForm : PillBarWindow
         }
         string path = FileNamer.NextPath(_settings.OutputFolder, DateTime.Now, ".mp4", File.Exists);
         var monitor = _frame.Monitor;
+        if (_settings.DoNotDisturbWhileRecording)
+            TurnOnDoNotDisturb(); // before the first frame
         bool hasAudio;
         try
         {
@@ -214,7 +222,7 @@ internal sealed class ControlBarForm : PillBarWindow
         }
         catch (Exception ex)
         {
-            SetStatus($"無法開始錄影：{ex.Message}");
+            SetStatus(TurnOffDoNotDisturb($"無法開始錄影：{ex.Message}"));
             return;
         }
         RegisterPauseHotkey();
@@ -281,9 +289,40 @@ internal sealed class ControlBarForm : PillBarWindow
         SetEnabled(BarItem.Size, true);
         SetEnabled(BarItem.Pick, true);
         SetEnabled(BarItem.Minimize, true);
-        SetStatus(message);
+        SetStatus(TurnOffDoNotDisturb(message));
         if (_closeAfterRecording)
             Close();
+    }
+
+    // ---- Do not disturb while recording (spec 8.1) ----
+
+    /// <summary>
+    /// Turns do not disturb on unless it already is, and notes in the settings that FrameCam is to turn it off.
+    /// Says nothing when this Windows will not let it.
+    /// </summary>
+    private void TurnOnDoNotDisturb()
+    {
+        if (_doNotDisturb.IsOn() != false || !_doNotDisturb.TrySet(true))
+            return;
+        _settings = _settings with { DoNotDisturbToTurnOff = true };
+        SaveSettings(); // now, in case FrameCam crashes while recording
+    }
+
+    /// <summary>
+    /// Turns off the do not disturb FrameCam turned on, if it did. Returns the message, with a note added when
+    /// do not disturb stays on, so the user does not go on missing notifications without knowing.
+    /// </summary>
+    private string TurnOffDoNotDisturb(string message)
+    {
+        if (!_settings.DoNotDisturbToTurnOff)
+            return message;
+        bool off = _doNotDisturb.TrySet(false);
+        _settings = _settings with { DoNotDisturbToTurnOff = false };
+        SaveSettings();
+        if (off)
+            return message;
+        const string note = "勿打擾沒有自動關掉，請手動關閉";
+        return message.Length == 0 ? note : $"{message}；{note}";
     }
 
     // ---- Pause (spec 8.1) ----

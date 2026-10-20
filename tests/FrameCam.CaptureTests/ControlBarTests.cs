@@ -948,6 +948,204 @@ public class ControlBarTests
         }
     });
 
+    // ---- Do not disturb while recording (spec 8.1) ----
+
+    [Fact]
+    public void With_the_box_checked_do_not_disturb_is_on_for_the_whole_recording_and_off_after() => Sta.Run(async () =>
+    {
+        var dnd = new FakeDoNotDisturb(on: false);
+        var bar = new ControlBarForm(NewSettingsFile(doNotDisturb: true), doNotDisturb: dnd);
+        try
+        {
+            bar.Show();
+            await Task.Delay(300);
+            bar.ToggleRecording();
+            Assert.True(dnd.On); // before the first frame
+            await WaitFor(() => !bar.Look.Disabled.Contains(BarItem.Pause));
+            bar.TogglePause();
+            Assert.True(dnd.On);
+            bar.TogglePause();
+
+            bar.ToggleRecording();
+            await WaitFor(() => !bar.Look.Recording);
+            Assert.False(dnd.On);
+        }
+        finally
+        {
+            bar.Close();
+            await WaitFor(() => bar.IsDisposed);
+        }
+    });
+
+    [Fact]
+    public void Do_not_disturb_that_was_already_on_stays_on_after_a_recording() => Sta.Run(async () =>
+    {
+        var dnd = new FakeDoNotDisturb(on: true);
+        var bar = new ControlBarForm(NewSettingsFile(doNotDisturb: true), doNotDisturb: dnd);
+        try
+        {
+            bar.Show();
+            await Task.Delay(300);
+            await RecordBriefly(bar);
+
+            Assert.True(dnd.On);
+            Assert.Equal(0, dnd.Changes);
+        }
+        finally
+        {
+            bar.Close();
+            await WaitFor(() => bar.IsDisposed);
+        }
+    });
+
+    [Fact]
+    public void With_the_box_unchecked_a_recording_leaves_do_not_disturb_alone() => Sta.Run(async () =>
+    {
+        var dnd = new FakeDoNotDisturb(on: false);
+        var bar = new ControlBarForm(NewSettingsFile(doNotDisturb: false), doNotDisturb: dnd);
+        try
+        {
+            bar.Show();
+            await Task.Delay(300);
+            await RecordBriefly(bar);
+
+            Assert.Equal(0, dnd.Calls);
+        }
+        finally
+        {
+            bar.Close();
+            await WaitFor(() => bar.IsDisposed);
+        }
+    });
+
+    [Fact]
+    public void Without_a_do_not_disturb_this_program_can_change_the_recording_goes_ahead_without_a_word() => Sta.Run(async () =>
+    {
+        var dnd = new FakeDoNotDisturb(on: null) { CanTurnOn = false };
+        var bar = new ControlBarForm(NewSettingsFile(doNotDisturb: true), doNotDisturb: dnd);
+        try
+        {
+            bar.Show();
+            await Task.Delay(300);
+            bar.ToggleRecording();
+            await WaitFor(() => !bar.Look.Disabled.Contains(BarItem.Pause)); // recording
+            Assert.DoesNotContain("勿打擾", bar.StatusBubble.Message);
+
+            bar.ToggleRecording();
+            await WaitFor(() => !bar.Look.Recording);
+            Assert.DoesNotContain("勿打擾", bar.StatusBubble.Message);
+        }
+        finally
+        {
+            bar.Close();
+            await WaitFor(() => bar.IsDisposed);
+        }
+    });
+
+    [Fact]
+    public void Do_not_disturb_that_will_not_turn_back_off_is_reported_under_the_bar() => Sta.Run(async () =>
+    {
+        var dnd = new FakeDoNotDisturb(on: false) { CanTurnOff = false };
+        var bar = new ControlBarForm(NewSettingsFile(doNotDisturb: true), doNotDisturb: dnd);
+        try
+        {
+            bar.Show();
+            await Task.Delay(300);
+            await RecordBriefly(bar);
+
+            Assert.Contains("已存檔", bar.StatusBubble.Message);
+            Assert.Contains("勿打擾沒有自動關掉，請手動關閉", bar.StatusBubble.Message);
+        }
+        finally
+        {
+            bar.Close();
+            await WaitFor(() => bar.IsDisposed);
+        }
+    });
+
+    [Fact]
+    public void The_settings_file_notes_do_not_disturb_is_to_be_turned_off_until_the_recording_ends() => Sta.Run(async () =>
+    {
+        string path = NewSettingsFile(doNotDisturb: true);
+        var bar = new ControlBarForm(path, doNotDisturb: new FakeDoNotDisturb(on: false));
+        try
+        {
+            bar.Show();
+            await Task.Delay(300);
+            bar.ToggleRecording();
+            Assert.True(SettingsStore.Load(path).Settings.DoNotDisturbToTurnOff);
+            await WaitFor(() => !bar.Look.Disabled.Contains(BarItem.Pause));
+
+            bar.ToggleRecording();
+            await WaitFor(() => !bar.Look.Recording);
+            Assert.False(SettingsStore.Load(path).Settings.DoNotDisturbToTurnOff);
+        }
+        finally
+        {
+            bar.Close();
+            await WaitFor(() => bar.IsDisposed);
+        }
+    });
+
+    [Fact]
+    public void Do_not_disturb_left_on_by_a_FrameCam_that_crashed_is_turned_off_at_the_next_start() => Sta.Run(async () =>
+    {
+        string path = NewSettingsFile(doNotDisturb: true, toTurnOff: true);
+        var dnd = new FakeDoNotDisturb(on: true);
+        var bar = new ControlBarForm(path, doNotDisturb: dnd);
+        try
+        {
+            bar.Show();
+            await Task.Delay(300);
+
+            Assert.False(dnd.On);
+            Assert.False(SettingsStore.Load(path).Settings.DoNotDisturbToTurnOff);
+        }
+        finally
+        {
+            bar.Close();
+            await WaitFor(() => bar.IsDisposed);
+        }
+    });
+
+    private static async Task RecordBriefly(ControlBarForm bar)
+    {
+        bar.ToggleRecording();
+        await WaitFor(() => !bar.Look.Disabled.Contains(BarItem.Pause));
+        bar.ToggleRecording();
+        await WaitFor(() => !bar.Look.Recording);
+    }
+
+    /// <summary>Stands in for Windows' do not disturb, so the tests leave the real one alone.</summary>
+    private sealed class FakeDoNotDisturb(bool? on) : IDoNotDisturb
+    {
+        /// <summary>Null: this Windows does not let a program read it.</summary>
+        public bool? On { get; private set; } = on;
+        public bool CanTurnOn { get; init; } = true;
+        public bool CanTurnOff { get; init; } = true;
+
+        /// <summary>Reads and attempted changes.</summary>
+        public int Calls { get; private set; }
+
+        public int Changes { get; private set; }
+
+        public bool? IsOn()
+        {
+            Calls++;
+            return On;
+        }
+
+        public bool TrySet(bool on)
+        {
+            Calls++;
+            if (!(on ? CanTurnOn : CanTurnOff))
+                return false;
+            On = on;
+            Changes++;
+            return true;
+        }
+    }
+
     private static async Task WaitFor(Func<bool> condition)
     {
         for (int i = 0; i < 100 && !condition(); i++)
@@ -984,6 +1182,14 @@ public class ControlBarTests
             PickHotkey = HotkeyText.Format(PickKey),
             CustomSizes = customSizes,
         });
+        return path;
+    }
+
+    private static string NewSettingsFile(bool doNotDisturb, bool toTurnOff = false)
+    {
+        string path = NewSettingsFile();
+        var (settings, _) = SettingsStore.Load(path);
+        SettingsStore.Save(path, settings with { DoNotDisturbWhileRecording = doNotDisturb, DoNotDisturbToTurnOff = toTurnOff });
         return path;
     }
 }

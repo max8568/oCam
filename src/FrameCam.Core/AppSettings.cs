@@ -29,6 +29,15 @@ public sealed record AppSettings
     /// <summary>Leave the mouse cursor out of videos. Screenshots never have it.</summary>
     public bool HideCursor { get; init; }
 
+    /// <summary>Turn on Windows' do not disturb for each recording, and back off when it ends.</summary>
+    public bool DoNotDisturbWhileRecording { get; init; }
+
+    /// <summary>
+    /// FrameCam turned do not disturb on for a recording that has not ended yet. Still set at the next start
+    /// means FrameCam crashed while recording, and turns it off then.
+    /// </summary>
+    public bool DoNotDisturbToTurnOff { get; init; }
+
     public SavedRegion? LastRegion { get; init; }
     public SavedPosition? LastBarPosition { get; init; }
 

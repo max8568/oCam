@@ -34,6 +34,8 @@ public class SettingsStoreTests
         Assert.Equal("F6", settings.PickHotkey);
         Assert.Equal(60, settings.FramesPerSecond);
         Assert.False(settings.HideCursor);
+        Assert.False(settings.DoNotDisturbWhileRecording);
+        Assert.False(settings.DoNotDisturbToTurnOff);
         Assert.Null(settings.LastRegion);
         Assert.Empty(settings.CustomSizes);
     }
@@ -88,6 +90,8 @@ public class SettingsStoreTests
             ScreenshotHotkey = "F10",
             FramesPerSecond = 30,
             HideCursor = true,
+            DoNotDisturbWhileRecording = true,
+            DoNotDisturbToTurnOff = true,
             LastRegion = new SavedRegion(@"\\.\DISPLAY1", 1921, 33, 640, 360),
             LastBarPosition = new SavedPosition(@"\\.\DISPLAY1", 2400, 16),
         };
