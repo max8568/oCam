@@ -10,7 +10,7 @@ public class SnapTargetsTests
     [Theory]
     [InlineData(502, 500)] // 2 pixels away: snaps
     [InlineData(504, 500)] // 4 pixels away: snaps
-    [InlineData(505, 504)] // 5 pixels away: no snap; width 405 becomes 404
+    [InlineData(505, 505)] // 5 pixels away: no snap
     public void Dragged_edge_snaps_within_four_pixels(int rawRight, int expectedRight)
     {
         var snap = new SnapTargets([500], []);
@@ -19,12 +19,12 @@ public class SnapTargetsTests
     }
 
     [Fact]
-    public void Snapping_to_an_odd_size_moves_the_dragged_edge_inward()
+    public void Snapping_to_an_odd_size_lands_on_the_target()
     {
         var snap = new SnapTargets([601, 51], []);
-        Assert.Equal(600, FrameGeometry.Resize(Start, Handle.Right, new PixelPoint(601 - 740, 0), Monitor, snap).Right);
+        Assert.Equal(601, FrameGeometry.Resize(Start, Handle.Right, new PixelPoint(601 - 740, 0), Monitor, snap).Right);
         var left = FrameGeometry.Resize(Start, Handle.Left, new PixelPoint(51 - 100, 0), Monitor, snap);
-        Assert.Equal(PixelRect.FromEdges(52, 100, 740, 460), left);
+        Assert.Equal(PixelRect.FromEdges(51, 100, 740, 460), left);
     }
 
     [Fact]

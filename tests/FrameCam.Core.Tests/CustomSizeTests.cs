@@ -37,17 +37,19 @@ public class CustomSizeTests
     }
 
     [Theory]
-    [InlineData(801, 600)]  // odd
-    [InlineData(800, 599)]  // odd
     [InlineData(30, 600)]   // below the 32 minimum
     [InlineData(800, 8194)] // above the maximum
     [InlineData(-800, 600)]
-    public void Width_and_height_must_be_even_and_in_range(int width, int height)
+    public void Width_and_height_must_be_in_range(int width, int height)
     {
         var (size, error) = CustomSize.Parse("x", width.ToString(), height.ToString());
         Assert.Null(size);
-        Assert.Equal("寬和高要是 32 到 8192 之間的偶數", error);
+        Assert.Equal("寬和高要在 32 到 8192 之間", error);
     }
+
+    [Fact]
+    public void Odd_sides_are_allowed() =>
+        Assert.Equal(new CustomSize("x", 801, 599), CustomSize.Parse("x", "801", "599").Size);
 
     [Fact]
     public void Smallest_and_largest_sides_are_allowed()

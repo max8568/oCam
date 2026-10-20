@@ -63,7 +63,7 @@ public class SettingsStoreTests
             ] }
             """));
         Assert.Null(error);
-        Assert.Equal([new CustomSize("ok", 800, 600), new CustomSize("", 640, 480)], settings.CustomSizes);
+        Assert.Equal([new CustomSize("ok", 800, 600), new CustomSize("odd", 801, 600), new CustomSize("", 640, 480)], settings.CustomSizes);
     }
 
     [Fact]

@@ -23,15 +23,15 @@ public class FrameAdjustTests
     }
 
     [Theory]
-    [InlineData(Handle.BottomRight, Arrow.Right, 100, 100, 742, 460)]
-    [InlineData(Handle.BottomRight, Arrow.Up, 100, 100, 740, 458)]
-    [InlineData(Handle.TopLeft, Arrow.Left, 98, 100, 740, 460)]
-    [InlineData(Handle.TopLeft, Arrow.Down, 100, 102, 740, 460)]
-    [InlineData(Handle.Left, Arrow.Right, 102, 100, 740, 460)]
+    [InlineData(Handle.BottomRight, Arrow.Right, 100, 100, 741, 460)]
+    [InlineData(Handle.BottomRight, Arrow.Up, 100, 100, 740, 459)]
+    [InlineData(Handle.TopLeft, Arrow.Left, 99, 100, 740, 460)]
+    [InlineData(Handle.TopLeft, Arrow.Down, 100, 101, 740, 460)]
+    [InlineData(Handle.Left, Arrow.Right, 101, 100, 740, 460)]
     [InlineData(Handle.Left, Arrow.Up, 100, 100, 740, 460)]     // across a side: ignored
-    [InlineData(Handle.Bottom, Arrow.Down, 100, 100, 740, 462)]
+    [InlineData(Handle.Bottom, Arrow.Down, 100, 100, 740, 461)]
     [InlineData(Handle.Bottom, Arrow.Left, 100, 100, 740, 460)] // across a side: ignored
-    public void Ctrl_arrow_moves_the_active_edge_two_pixels(Handle active, Arrow arrow, int left, int top, int right, int bottom) =>
+    public void Ctrl_arrow_moves_the_active_edge_one_pixel(Handle active, Arrow arrow, int left, int top, int right, int bottom) =>
         Assert.Equal(PixelRect.FromEdges(left, top, right, bottom), FrameAdjust.NudgeEdge(Region, active, arrow, Monitor));
 
     [Fact]
@@ -57,12 +57,12 @@ public class FrameAdjustTests
         Assert.Null(FrameAdjust.ApplyPreset(Region, new PixelSize(1920, 1080), new PixelRect(0, 0, 1366, 768)));
 
     [Fact]
-    public void Full_monitor_uses_an_even_size() =>
-        Assert.Equal(new PixelRect(1920, 0, 1366, 766), FrameAdjust.FullMonitor(new PixelRect(1920, 0, 1367, 767)));
+    public void Full_monitor_uses_the_whole_monitor() =>
+        Assert.Equal(new PixelRect(1920, 0, 1367, 767), FrameAdjust.FullMonitor(new PixelRect(1920, 0, 1367, 767)));
 
     [Fact]
-    public void Fit_to_window_trims_odd_right_and_bottom() =>
-        Assert.Equal(new PixelRect(10, 20, 300, 200), FrameAdjust.FitToWindow(new PixelRect(10, 20, 301, 201), Monitor));
+    public void Fit_to_window_keeps_an_odd_size() =>
+        Assert.Equal(new PixelRect(10, 20, 301, 201), FrameAdjust.FitToWindow(new PixelRect(10, 20, 301, 201), Monitor));
 
     [Fact]
     public void Fit_to_window_keeps_only_the_part_on_the_monitor() =>

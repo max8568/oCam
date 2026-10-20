@@ -22,7 +22,7 @@ public static class FrameAdjust
     }
 
     /// <summary>
-    /// Ctrl+arrow: moves the active handle's edge 2 pixels in the arrow direction. A corner uses left/right
+    /// Ctrl+arrow: moves the active handle's edge 1 pixel in the arrow direction. A corner uses left/right
     /// for its vertical edge and up/down for its horizontal edge; a side ignores arrows across it. The region
     /// is returned unchanged when the move would leave the monitor or go below MinSize.
     /// </summary>
@@ -32,14 +32,14 @@ public static class FrameAdjust
         int left = region.Left, top = region.Top, right = region.Right, bottom = region.Bottom;
         if (dx != 0)
         {
-            if (active.MovesLeft()) left += 2 * dx;
-            else if (active.MovesRight()) right += 2 * dx;
+            if (active.MovesLeft()) left += dx;
+            else if (active.MovesRight()) right += dx;
             else return region;
         }
         else
         {
-            if (active.MovesTop()) top += 2 * dy;
-            else if (active.MovesBottom()) bottom += 2 * dy;
+            if (active.MovesTop()) top += dy;
+            else if (active.MovesBottom()) bottom += dy;
             else return region;
         }
         var moved = PixelRect.FromEdges(left, top, right, bottom);
@@ -55,18 +55,16 @@ public static class FrameAdjust
         return FrameGeometry.ClampToMonitor(new PixelRect(region.Left, region.Top, size.Width, size.Height), monitor);
     }
 
-    public static PixelRect FullMonitor(PixelRect monitor) =>
-        new(monitor.Left, monitor.Top, FrameGeometry.FloorEven(monitor.Width), FrameGeometry.FloorEven(monitor.Height));
+    public static PixelRect FullMonitor(PixelRect monitor) => monitor;
 
     /// <summary>
-    /// The region for a window's outer bounds or client area: the part on the monitor, with the right and
-    /// bottom edges moved in by 1 pixel when the size is odd. Null when that is smaller than MinSize.
+    /// The region for a window's outer bounds or client area: the part on the monitor. Null when that is
+    /// smaller than MinSize.
     /// </summary>
     public static PixelRect? FitToWindow(PixelRect window, PixelRect monitor)
     {
         var visible = window.Intersect(monitor);
-        var fitted = new PixelRect(visible.Left, visible.Top, FrameGeometry.FloorEven(visible.Width), FrameGeometry.FloorEven(visible.Height));
-        return fitted.Width >= FrameGeometry.MinSize && fitted.Height >= FrameGeometry.MinSize ? fitted : null;
+        return visible.Width >= FrameGeometry.MinSize && visible.Height >= FrameGeometry.MinSize ? visible : null;
     }
 
     private static (int Dx, int Dy) Direction(Arrow arrow) => arrow switch

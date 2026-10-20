@@ -14,7 +14,7 @@ public sealed record CustomSize(string Label, int Width, int Height)
     /// <summary>"直播（1600 × 900）", or just "1600 × 900" without a label.</summary>
     public string MenuText => Label.Length == 0 ? $"{Width} × {Height}" : $"{Label}（{Width} × {Height}）";
 
-    /// <summary>Even sides from MinSize to MaxSide (spec 7.6), and a label of at most MaxLabelLength characters.</summary>
+    /// <summary>Sides from MinSize to MaxSide, and a label of at most MaxLabelLength characters.</summary>
     public bool IsValid => LabelLength(Label) <= MaxLabelLength && IsValidSide(Width) && IsValidSide(Height);
 
     /// <summary>Reads what the user typed: the size, or null and a message that says what to change.</summary>
@@ -26,14 +26,14 @@ public sealed record CustomSize(string Label, int Width, int Height)
         if (!TryParseNumber(width, out int w) || !TryParseNumber(height, out int h))
             return (null, "寬和高要填數字");
         if (!IsValidSide(w) || !IsValidSide(h))
-            return (null, $"寬和高要是 {FrameGeometry.MinSize} 到 {MaxSide} 之間的偶數");
+            return (null, $"寬和高要在 {FrameGeometry.MinSize} 到 {MaxSide} 之間");
         return (new CustomSize(label, w, h), null);
     }
 
     /// <summary>Characters as the user sees them: an emoji counts once, not as its two UTF-16 halves.</summary>
     private static int LabelLength(string label) => new StringInfo(label).LengthInTextElements;
 
-    private static bool IsValidSide(int side) => side >= FrameGeometry.MinSize && side <= MaxSide && side % 2 == 0;
+    private static bool IsValidSide(int side) => side >= FrameGeometry.MinSize && side <= MaxSide;
 
     private static bool TryParseNumber(string text, out int value)
     {

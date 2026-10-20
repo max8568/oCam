@@ -49,23 +49,23 @@ public class CustomSizesFormTests
     public void Size_that_is_not_allowed_shows_why_and_is_not_added() => Sta.Run(async () =>
     {
         using var dialog = await Show([]);
-        Type(dialog, "x", "801", "600");
+        Type(dialog, "x", "30", "600");
         Button(dialog, "新增").PerformClick();
 
         Assert.Empty(dialog.Sizes);
-        Assert.Contains(All<Label>(dialog), l => l.Visible && l.Text == "寬和高要是 32 到 8192 之間的偶數");
+        Assert.Contains(All<Label>(dialog), l => l.Visible && l.Text == "寬和高要在 32 到 8192 之間");
     });
 
     [Fact]
     public void Message_goes_away_after_a_size_is_added() => Sta.Run(async () =>
     {
         using var dialog = await Show([]);
-        Type(dialog, "x", "801", "600");
+        Type(dialog, "x", "30", "600");
         Button(dialog, "新增").PerformClick();
         Type(dialog, "x", "800", "600");
         Button(dialog, "新增").PerformClick();
 
-        Assert.DoesNotContain(All<Label>(dialog), l => l.Visible && l.Text == "寬和高要是 32 到 8192 之間的偶數");
+        Assert.DoesNotContain(All<Label>(dialog), l => l.Visible && l.Text == "寬和高要在 32 到 8192 之間");
     });
 
     [Fact]
@@ -164,10 +164,10 @@ public class CustomSizesFormTests
     public void The_list_has_a_title_above_it_clear_of_the_message() => Sta.Run(async () =>
     {
         using var dialog = await Show([]);
-        Type(dialog, "x", "801", "600");
+        Type(dialog, "x", "30", "600");
         Button(dialog, "新增").PerformClick(); // shows the message between the boxes and the list
         var title = All<Label>(dialog).Single(l => l.Text == "已儲存的尺寸");
-        var message = All<Label>(dialog).Single(l => l.Visible && l.Text == "寬和高要是 32 到 8192 之間的偶數");
+        var message = All<Label>(dialog).Single(l => l.Visible && l.Text == "寬和高要在 32 到 8192 之間");
         var list = List(dialog).Parent!;
 
         Assert.True(title.Visible);

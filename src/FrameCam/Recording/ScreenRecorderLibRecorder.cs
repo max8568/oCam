@@ -79,10 +79,12 @@ public sealed class ScreenRecorderLibRecorder : IScreenRecorder
     {
         var r = request.Region;
         var m = request.MonitorBounds;
+        // H.264 stores only even sizes, so an odd region leaves out its last column or row (spec 7.6).
+        int width = FrameGeometry.FloorEven(r.Width), height = FrameGeometry.FloorEven(r.Height);
         var source = new DisplayRecordingSource(request.MonitorDeviceName)
         {
             // Relative to the monitor's top-left (checked on a non-primary monitor by RecordingEngineTests).
-            SourceRect = new ScreenRect(r.Left - m.Left, r.Top - m.Top, r.Width, r.Height),
+            SourceRect = new ScreenRect(r.Left - m.Left, r.Top - m.Top, width, height),
             Stretch = StretchMode.None,
             IsCursorCaptureEnabled = !request.HideCursor,
         };
@@ -92,7 +94,7 @@ public sealed class ScreenRecorderLibRecorder : IScreenRecorder
             OutputOptions = new OutputOptions
             {
                 RecorderMode = RecorderMode.Video,
-                OutputFrameSize = new ScreenSize(r.Width, r.Height),
+                OutputFrameSize = new ScreenSize(width, height),
                 Stretch = StretchMode.None,
             },
             VideoEncoderOptions = new VideoEncoderOptions

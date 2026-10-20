@@ -35,7 +35,7 @@ public class RegionPlacementTests
     }
 
     [Fact]
-    public void Odd_saved_size_is_made_even() =>
-        Assert.Equal(new PixelRect(100, 100, 640, 360),
+    public void Odd_saved_size_is_kept() =>
+        Assert.Equal(new PixelRect(100, 100, 641, 361),
             RegionPlacement.Restore(new SavedRegion(@"\\.\DISPLAY2", 100, 100, 641, 361), Both).Region);
 }

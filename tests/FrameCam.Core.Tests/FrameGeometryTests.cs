@@ -11,21 +11,21 @@ public class FrameGeometryTests
         FrameGeometry.Resize(Start, handle, new PixelPoint(dx, dy), Monitor, SnapTargets.None);
 
     [Theory]
-    [InlineData(5, 644)]
+    [InlineData(5, 645)]
     [InlineData(6, 646)]
-    [InlineData(-3, 636)]
-    public void Dragging_right_edge_keeps_width_even(int dx, int expectedWidth) =>
+    [InlineData(-3, 637)]
+    public void Dragging_right_edge_moves_it_one_pixel_at_a_time(int dx, int expectedWidth) =>
         Assert.Equal(new PixelRect(100, 100, expectedWidth, 360), Resize(Handle.Right, dx, 0));
 
     [Theory]
-    [InlineData(-5, 96, 644)]
-    [InlineData(3, 104, 636)]
-    public void Dragging_left_edge_moves_only_the_left_edge_in_steps_of_two(int dx, int expectedLeft, int expectedWidth) =>
+    [InlineData(-5, 95, 645)]
+    [InlineData(3, 103, 637)]
+    public void Dragging_left_edge_moves_only_the_left_edge(int dx, int expectedLeft, int expectedWidth) =>
         Assert.Equal(new PixelRect(expectedLeft, 100, expectedWidth, 360), Resize(Handle.Left, dx, 0));
 
     [Fact]
     public void Dragging_top_left_corner_changes_both_edges() =>
-        Assert.Equal(new PixelRect(98, 98, 642, 362), Resize(Handle.TopLeft, -3, -3));
+        Assert.Equal(new PixelRect(97, 97, 643, 363), Resize(Handle.TopLeft, -3, -3));
 
     [Fact]
     public void Dragging_an_edge_ignores_movement_along_it() =>
@@ -39,11 +39,11 @@ public class FrameGeometryTests
     }
 
     [Fact]
-    public void Odd_left_edge_cannot_reach_an_even_monitor_edge()
+    public void Odd_left_edge_reaches_the_monitor_edge()
     {
         var start = new PixelRect(1001, 100, 640, 360);
         var result = FrameGeometry.Resize(start, Handle.Right, new PixelPoint(5000, 0), Monitor, SnapTargets.None);
-        Assert.Equal(PixelRect.FromEdges(1001, 100, 1919, 460), result);
+        Assert.Equal(PixelRect.FromEdges(1001, 100, 1920, 460), result);
     }
 
     [Fact]
@@ -66,11 +66,11 @@ public class FrameGeometryTests
         Assert.Equal(new PixelRect(1280, 0, 640, 360), FrameGeometry.Move(Start, new PixelPoint(5000, -5000), Monitor));
 
     [Fact]
-    public void Moving_to_a_smaller_monitor_shrinks_to_fit_with_even_size()
+    public void Moving_to_a_smaller_monitor_shrinks_to_fit()
     {
         var small = new PixelRect(1920, 0, 801, 599);
         var big = new PixelRect(0, 0, 1280, 720);
-        Assert.Equal(new PixelRect(1920, 0, 800, 598), FrameGeometry.Move(big, new PixelPoint(1920, 0), small));
+        Assert.Equal(new PixelRect(1920, 0, 801, 599), FrameGeometry.Move(big, new PixelPoint(1920, 0), small));
     }
 
     [Theory]

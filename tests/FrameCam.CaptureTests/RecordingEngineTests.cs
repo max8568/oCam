@@ -24,6 +24,41 @@ public class RecordingEngineTests
     public void Region_touching_monitor_bottom_right_is_recorded_pixel_exact() =>
         CheckRegion(primary: true, m => new PixelRect(m.Right - RegionSize.Width, m.Bottom - RegionSize.Height, RegionSize.Width, RegionSize.Height));
 
+    /// <summary>
+    /// H.264 stores only even sizes, so a 641×361 region is recorded as 640×360 without its last column and
+    /// row (spec 7.6). The screenshot has the whole region.
+    /// </summary>
+    [CaptureFact]
+    public void Odd_size_region_leaves_the_last_column_and_row_out_of_the_video()
+    {
+        string folder = Directory.CreateTempSubdirectory("framecam 測試 odd ").FullName;
+        string video = Path.Combine(folder, "odd.mp4");
+        string png = Path.Combine(folder, "odd.png");
+        Sta.Run(async () =>
+        {
+            var screen = Screen.PrimaryScreen!;
+            var monitor = screen.Bounds.ToPixelRect();
+            var region = new PixelRect(monitor.Left + 101, monitor.Top + 77, 641, 361);
+            Cursor.Position = new Point(monitor.Left + 2, monitor.Top + 2);
+            using var pattern = new TestPatternForm(region);
+            pattern.Show();
+            await Task.Delay(500);
+            ScreenshotTaker.Save(region, png);
+            await Record(screen.DeviceName, monitor, region, video, seconds: 2);
+        });
+
+        AssertScreenshot(png, 641, 361);
+        var (w, h, frames) = Ffmpeg.DecodeLuma(video);
+        Assert.Equal((640, 360), (w, h));
+        Assert.NotEmpty(frames);
+        foreach (byte[] luma in frames)
+        {
+            Assert.True(luma[180 * w] >= 200 && luma[320] >= 200, "the region's left column or top row is missing");
+            Assert.InRange(luma[180 * w + w - 1], (byte)100, (byte)160); // gray: the column before the white right edge
+            Assert.InRange(luma[(h - 1) * w + 320], (byte)100, (byte)160);
+        }
+    }
+
     /// <summary>While the screen changes on every refresh, 1080p at 60 fps keeps up and stays in sync with the audio.</summary>
     [CaptureFact]
     public void Full_hd_at_60_fps_with_motion_keeps_up()
