@@ -16,7 +16,7 @@ internal sealed class AdjustingEventArgs(PixelPoint focus, PixelPoint anchor) : 
 
 /// <summary>
 /// The recording frame on screen (spec 7.1). The window's shape is only the border ring, the 8 handles and
-/// the size label, all outside the region, so the region's pixels stay visible and clickable. The four-way
+/// the position and size labels, all outside the region, so the region's pixels stay visible and clickable. The four-way
 /// arrow in the middle of the region is a window of its own (<see cref="MoverWindow"/>), hidden while
 /// recording. The window is left out of every screen capture.
 /// </summary>
@@ -269,18 +269,29 @@ internal sealed class FrameWindow : Form
             g.FillRectangle(_locked ? border : Brushes.White, c);
             g.DrawRectangle(outline, c.X, c.Y, c.Width - 1, c.Height - 1);
         }
-        var label = ToClient(_layout.Label);
+        DrawLabel(g, border, _layout.PositionLabel, PositionText);
+        DrawLabel(g, border, _layout.SizeLabel, SizeText);
+    }
+
+    private void DrawLabel(Graphics g, Brush border, PixelRect rect, string text)
+    {
+        var label = ToClient(rect);
         g.FillRectangle(border, label);
-        TextRenderer.DrawText(g, LabelText, LabelFont, label, Color.White,
+        TextRenderer.DrawText(g, text, LabelFont, label, Color.White,
             TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter | TextFormatFlags.NoPadding);
     }
 
-    private string LabelText => $"{_region.Width} × {_region.Height}";
+    private string PositionText => $"({_region.Left}, {_region.Top})";
 
-    private FrameLayout CreateLayout()
+    private string SizeText => $"{_region.Width} × {_region.Height}";
+
+    private FrameLayout CreateLayout() =>
+        new(_region, LabelSize(PositionText), LabelSize(SizeText), _monitor.Bounds);
+
+    private static PixelSize LabelSize(string text)
     {
-        var text = TextRenderer.MeasureText(LabelText, LabelFont, Size.Empty, TextFormatFlags.NoPadding);
-        return new FrameLayout(_region, new PixelSize(text.Width + 12, text.Height + 6), _monitor.Bounds);
+        var size = TextRenderer.MeasureText(text, LabelFont, Size.Empty, TextFormatFlags.NoPadding);
+        return new PixelSize(size.Width + 12, size.Height + 6);
     }
 
     /// <summary>
@@ -303,7 +314,8 @@ internal sealed class FrameWindow : Form
             shape.Union(ToClient(r));
         foreach (var (_, r) in _layout.Handles)
             shape.Union(ToClient(r));
-        shape.Union(ToClient(_layout.Label));
+        shape.Union(ToClient(_layout.PositionLabel));
+        shape.Union(ToClient(_layout.SizeLabel));
         var old = Region;
         Region = shape;
         old?.Dispose();

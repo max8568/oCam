@@ -7,29 +7,29 @@ public class FrameLayoutTests
     private static readonly PixelRect Monitor = new(0, 0, 1920, 1080);
     private static readonly PixelSize LabelSize = new(80, 20);
     // Region edges: left 100, top 100, right 300, bottom 200.
-    private static readonly FrameLayout Layout = new(new PixelRect(100, 100, 200, 100), LabelSize, Monitor);
+    private static readonly FrameLayout Layout = new(new PixelRect(100, 100, 200, 100), LabelSize, LabelSize, Monitor);
 
     [Fact]
     public void Label_sits_above_the_top_left_corner() =>
-        Assert.Equal(new PixelRect(100, 78, 80, 20), Layout.Label);
+        Assert.Equal(new PixelRect(100, 78, 80, 20), Layout.PositionLabel);
 
     [Fact]
     public void Label_does_not_cover_the_top_left_handle() =>
-        Assert.False(Layout.Label.IntersectsWith(Layout.Handles.Single(h => h.Handle == Handle.TopLeft).Rect));
+        Assert.False(Layout.PositionLabel.IntersectsWith(Layout.Handles.Single(h => h.Handle == Handle.TopLeft).Rect));
 
     [Fact]
     public void Label_on_a_narrow_region_goes_above_the_handles()
     {
         // The label (80 wide) would reach the top-middle handle at x 156..164.
-        var narrow = new FrameLayout(new PixelRect(100, 100, 120, 100), LabelSize, Monitor);
-        Assert.Equal(new PixelRect(100, 71, 80, 20), narrow.Label);
+        var narrow = new FrameLayout(new PixelRect(100, 100, 120, 100), LabelSize, LabelSize, Monitor);
+        Assert.Equal(new PixelRect(100, 71, 80, 20), narrow.PositionLabel);
     }
 
     [Fact]
     public void Label_on_a_narrow_region_near_the_top_goes_inside()
     {
-        var narrow = new FrameLayout(new PixelRect(100, 25, 120, 100), LabelSize, Monitor);
-        Assert.Equal(new PixelRect(100, 25, 80, 20), narrow.Label);
+        var narrow = new FrameLayout(new PixelRect(100, 25, 120, 100), LabelSize, LabelSize, Monitor);
+        Assert.Equal(new PixelRect(100, 25, 80, 20), narrow.PositionLabel);
     }
 
     [Theory]
@@ -41,23 +41,56 @@ public class FrameLayoutTests
     [InlineData(120, 25)]
     public void Label_never_covers_a_handle(int width, int top)
     {
-        var layout = new FrameLayout(new PixelRect(100, top, width, 100), LabelSize, Monitor);
-        Assert.All(layout.Handles, h => Assert.False(layout.Label.IntersectsWith(h.Rect), $"covers {h.Handle}"));
+        var layout = new FrameLayout(new PixelRect(100, top, width, 100), LabelSize, LabelSize, Monitor);
+        Assert.All(layout.Handles, h => Assert.False(layout.PositionLabel.IntersectsWith(h.Rect), $"covers {h.Handle}"));
     }
 
     [Fact]
     public void Label_moves_inside_the_region_when_there_is_no_room_above()
     {
-        var layout = new FrameLayout(new PixelRect(100, 10, 200, 100), LabelSize, Monitor);
-        Assert.Equal(new PixelRect(100, 10, 80, 20), layout.Label);
+        var layout = new FrameLayout(new PixelRect(100, 10, 200, 100), LabelSize, LabelSize, Monitor);
+        Assert.Equal(new PixelRect(100, 10, 80, 20), layout.PositionLabel);
     }
 
     [Fact]
-    public void Ring_handles_and_label_stay_outside_the_region()
+    public void Size_label_sits_below_the_bottom_right_corner() =>
+        Assert.Equal(new PixelRect(220, 202, 80, 20), Layout.SizeLabel);
+
+    [Fact]
+    public void Size_label_on_a_narrow_region_goes_below_the_handles()
+    {
+        // The size label (x 140..220) would reach the bottom-middle handle at x 156..164.
+        var narrow = new FrameLayout(new PixelRect(100, 100, 120, 100), LabelSize, LabelSize, Monitor);
+        Assert.Equal(new PixelRect(140, 209, 80, 20), narrow.SizeLabel);
+    }
+
+    [Fact]
+    public void Size_label_moves_inside_the_region_when_there_is_no_room_below()
+    {
+        var layout = new FrameLayout(new PixelRect(100, 970, 200, 100), LabelSize, LabelSize, Monitor);
+        Assert.Equal(new PixelRect(220, 1050, 80, 20), layout.SizeLabel);
+    }
+
+    [Theory]
+    [InlineData(32, 100)]
+    [InlineData(96, 100)]
+    [InlineData(120, 100)]
+    [InlineData(160, 100)]
+    [InlineData(200, 100)]
+    [InlineData(120, 975)]
+    public void Size_label_never_covers_a_handle(int width, int top)
+    {
+        var layout = new FrameLayout(new PixelRect(100, top, width, 100), LabelSize, LabelSize, Monitor);
+        Assert.All(layout.Handles, h => Assert.False(layout.SizeLabel.IntersectsWith(h.Rect), $"covers {h.Handle}"));
+    }
+
+    [Fact]
+    public void Ring_handles_and_labels_stay_outside_the_region()
     {
         Assert.All(Layout.Ring, r => Assert.False(r.IntersectsWith(Layout.Region)));
         Assert.All(Layout.Handles, h => Assert.False(h.Rect.IntersectsWith(Layout.Region)));
-        Assert.False(Layout.Label.IntersectsWith(Layout.Region));
+        Assert.False(Layout.PositionLabel.IntersectsWith(Layout.Region));
+        Assert.False(Layout.SizeLabel.IntersectsWith(Layout.Region));
     }
 
     [Fact]
@@ -68,8 +101,8 @@ public class FrameLayoutTests
     }
 
     [Fact]
-    public void Window_bounds_cover_handles_and_label() =>
-        Assert.Equal(PixelRect.FromEdges(91, 78, 309, 209), Layout.WindowBounds);
+    public void Window_bounds_cover_handles_and_labels() =>
+        Assert.Equal(PixelRect.FromEdges(91, 78, 309, 222), Layout.WindowBounds);
 
     [Theory]
     [InlineData(98, 150, Handle.Left)]
@@ -81,7 +114,8 @@ public class FrameLayoutTests
     [InlineData(150, 201, Handle.Bottom)]
     [InlineData(92, 92, Handle.TopLeft)]     // corner handle beyond the ring
     [InlineData(200, 92, Handle.Top)]        // top-middle handle beyond the ring
-    [InlineData(100, 80, Handle.Move)]       // label
+    [InlineData(100, 80, Handle.Move)]       // position label
+    [InlineData(250, 210, Handle.Move)]      // size label
     public void Hit_test_finds_the_grabbed_part(int x, int y, Handle expected) =>
         Assert.Equal(expected, Layout.HitTest(new PixelPoint(x, y)));
 
@@ -116,19 +150,19 @@ public class FrameLayoutTests
     [InlineData(94, 200)]
     public void Region_narrower_or_lower_than_96_has_no_mover(int width, int height)
     {
-        var layout = new FrameLayout(new PixelRect(100, 100, width, height), LabelSize, Monitor);
+        var layout = new FrameLayout(new PixelRect(100, 100, width, height), LabelSize, LabelSize, Monitor);
         Assert.Null(layout.Mover);
         Assert.Null(layout.HitTest(new PixelPoint(100 + width / 2, 100 + height / 2)));
     }
 
     [Fact]
     public void Region_of_96_by_96_has_a_mover() =>
-        Assert.NotNull(new FrameLayout(new PixelRect(100, 100, 96, 96), LabelSize, Monitor).Mover);
+        Assert.NotNull(new FrameLayout(new PixelRect(100, 100, 96, 96), LabelSize, LabelSize, Monitor).Mover);
 
     [Fact]
     public void Small_region_splits_each_side_between_its_corners()
     {
-        var small = new FrameLayout(new PixelRect(100, 100, 32, 32), LabelSize, Monitor);
+        var small = new FrameLayout(new PixelRect(100, 100, 32, 32), LabelSize, LabelSize, Monitor);
         Assert.Equal(Handle.TopLeft, small.HitTest(new PixelPoint(98, 115)));
         Assert.Equal(Handle.BottomLeft, small.HitTest(new PixelPoint(98, 116)));
     }

@@ -2,11 +2,11 @@ namespace FrameCam.Core;
 
 /// <summary>
 /// Where the frame window's parts go for a region, in screen pixels (spec 7.1): a 2-pixel border ring just
-/// outside the region, 9×9 handles outside its corners and edge midpoints, the size label above the
+/// outside the region, 9×9 handles outside its corners and edge midpoints, the position label above the
 /// top-left corner (from the region's left edge, clear of the corner handle; above the handles when the
 /// region is so narrow that it would cover the top-middle one), or inside the region's top-left when there
-/// is no room above on the monitor, and a
-/// 28×28 mover in the middle of regions at least 96 pixels wide and high. The label and the mover move the frame.
+/// is no room above on the monitor, the size label the same way below the bottom-right corner, and a
+/// 28×28 mover in the middle of regions at least 96 pixels wide and high. The labels and the mover move the frame.
 /// </summary>
 public sealed class FrameLayout
 {
@@ -16,7 +16,7 @@ public sealed class FrameLayout
     public const int MoverSize = 28;
     public const int MoverMinRegion = 96;
 
-    public FrameLayout(PixelRect region, PixelSize labelSize, PixelRect monitor)
+    public FrameLayout(PixelRect region, PixelSize positionLabelSize, PixelSize sizeLabelSize, PixelRect monitor)
     {
         Region = region;
 
@@ -24,13 +24,24 @@ public sealed class FrameLayout
         int midX = region.Left + region.Width / 2 - h / 2;
         int midY = region.Top + region.Height / 2 - h / 2;
         var topHandle = new PixelRect(midX, region.Top - h, h, h);
+        var bottomHandle = new PixelRect(midX, region.Bottom, h, h);
 
-        int labelTop = region.Top - BorderWidth - labelSize.Height;
-        if (new PixelRect(region.Left, labelTop, labelSize.Width, labelSize.Height).IntersectsWith(topHandle))
-            labelTop = region.Top - h - labelSize.Height;
-        Label = labelTop >= monitor.Top
-            ? new PixelRect(region.Left, labelTop, labelSize.Width, labelSize.Height)
-            : new PixelRect(region.Left, region.Top, labelSize.Width, labelSize.Height);
+        var p = positionLabelSize;
+        int positionTop = region.Top - BorderWidth - p.Height;
+        if (new PixelRect(region.Left, positionTop, p.Width, p.Height).IntersectsWith(topHandle))
+            positionTop = region.Top - h - p.Height;
+        PositionLabel = positionTop >= monitor.Top
+            ? new PixelRect(region.Left, positionTop, p.Width, p.Height)
+            : new PixelRect(region.Left, region.Top, p.Width, p.Height);
+
+        var s = sizeLabelSize;
+        int sizeLeft = region.Right - s.Width;
+        int sizeTop = region.Bottom + BorderWidth;
+        if (new PixelRect(sizeLeft, sizeTop, s.Width, s.Height).IntersectsWith(bottomHandle))
+            sizeTop = region.Bottom + h;
+        SizeLabel = sizeTop + s.Height <= monitor.Bottom
+            ? new PixelRect(sizeLeft, sizeTop, s.Width, s.Height)
+            : new PixelRect(sizeLeft, region.Bottom - s.Height, s.Width, s.Height);
 
         var outer = region.Inflate(BorderWidth);
         Ring =
@@ -58,14 +69,19 @@ public sealed class FrameLayout
 
         var aroundHandles = region.Inflate(HandleSize);
         WindowBounds = PixelRect.FromEdges(
-            Math.Min(aroundHandles.Left, Label.Left),
-            Math.Min(aroundHandles.Top, Label.Top),
-            Math.Max(aroundHandles.Right, Label.Right),
-            Math.Max(aroundHandles.Bottom, Label.Bottom));
+            Math.Min(aroundHandles.Left, Math.Min(PositionLabel.Left, SizeLabel.Left)),
+            Math.Min(aroundHandles.Top, Math.Min(PositionLabel.Top, SizeLabel.Top)),
+            Math.Max(aroundHandles.Right, Math.Max(PositionLabel.Right, SizeLabel.Right)),
+            Math.Max(aroundHandles.Bottom, Math.Max(PositionLabel.Bottom, SizeLabel.Bottom)));
     }
 
     public PixelRect Region { get; }
-    public PixelRect Label { get; }
+
+    /// <summary>The label with the region's top-left screen coordinates.</summary>
+    public PixelRect PositionLabel { get; }
+
+    /// <summary>The label with the region's width and height.</summary>
+    public PixelRect SizeLabel { get; }
     public IReadOnlyList<PixelRect> Ring { get; }
     public IReadOnlyList<(Handle Handle, PixelRect Rect)> Handles { get; }
 
@@ -76,7 +92,7 @@ public sealed class FrameLayout
     /// <summary>What a press at this screen point grabs, or null when the point is not on the frame.</summary>
     public Handle? HitTest(PixelPoint p)
     {
-        if (Label.Contains(p) || Mover?.Contains(p) == true)
+        if (PositionLabel.Contains(p) || SizeLabel.Contains(p) || Mover?.Contains(p) == true)
             return Handle.Move;
         if (!Ring.Any(r => r.Contains(p)) && !Handles.Any(h => h.Rect.Contains(p)))
             return null;

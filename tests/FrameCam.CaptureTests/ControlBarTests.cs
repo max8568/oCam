@@ -236,9 +236,9 @@ public class ControlBarTests
         {
             bar.Show();
             await Task.Delay(300);
-            var label = bar.Frame.CurrentLayout.Label;
+            var label = bar.Frame.CurrentLayout.PositionLabel;
             var button = Center(bar.BarLayout[BarItem.Settings]);
-            bar.Location = new Point(label.Left + label.Width / 2 - button.X, label.Top + label.Height / 2 - button.Y); // the button on the size label
+            bar.Location = new Point(label.Left + label.Width / 2 - button.X, label.Top + label.Height / 2 - button.Y); // the button on the position label
             await Task.Delay(300);
             var point = bar.PointToScreen(button);
             Assert.Equal(bar.Handle, TestNative.TopLevelWindowAt(point));
