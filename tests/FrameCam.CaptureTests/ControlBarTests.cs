@@ -761,6 +761,40 @@ public class ControlBarTests
     });
 
     [Fact]
+    public void Switching_custom_sizes_without_recording_keeps_where_each_was() => Sta.Run(async () =>
+    {
+        const string Wide = "橫（800 × 400）", Tall = "直（400 × 800）";
+        var bar = new ControlBarForm(NewSettingsFile(new CustomSize("橫", 800, 400), new CustomSize("直", 400, 800)));
+        try
+        {
+            bar.Show();
+            await Task.Delay(300);
+            void Pick(string text)
+            {
+                using var menu = bar.BuildSizeMenu();
+                menu.Items.Cast<ToolStripItem>().Single(i => i.Text == text).PerformClick();
+            }
+            var monitor = bar.Frame.Monitor;
+            var m = monitor.Bounds;
+            Pick(Wide);
+            var wide = new PixelRect(m.Left + 10, m.Top + 20, 800, 400);
+            bar.Frame.SetRegion(wide, monitor); // what dragging the frame does
+            Pick(Tall);
+            var tall = new PixelRect(m.Left + 30, m.Top + 40, 400, 800);
+            bar.Frame.SetRegion(tall, monitor);
+
+            Pick(Wide);
+            Assert.Equal(wide, bar.Frame.CaptureRegion);
+            Pick(Tall);
+            Assert.Equal(tall, bar.Frame.CaptureRegion);
+        }
+        finally
+        {
+            bar.Close();
+        }
+    });
+
+    [Fact]
     public void Custom_size_larger_than_the_screen_cannot_be_picked() => Sta.Run(async () =>
     {
         var bar = new ControlBarForm(NewSettingsFile(new CustomSize("太大", 8000, 4000)));

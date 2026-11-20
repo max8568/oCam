@@ -38,7 +38,7 @@ internal sealed class ControlBarForm : PillBarWindow
     private bool _pickHotkeyFailed;
     private bool _picking;
 
-    /// <summary>The custom size last picked from the size menu; a recording started at its size saves its place.</summary>
+    /// <summary>The custom size last picked from the size menu, to tell apart custom sizes of the same width and height.</summary>
     private CustomSize? _pickedSize;
     private bool _minimized;
 
@@ -243,16 +243,7 @@ internal sealed class ControlBarForm : PillBarWindow
         SetEnabled(BarItem.Pick, false);
         SetEnabled(BarItem.Minimize, false);
         SetStatus(_recordingNote.Length == 0 ? "準備錄影…" : $"準備錄影…（{_recordingNote}）");
-        var r = _frame.CaptureRegion;
-        if (_pickedSize is { } picked && picked.Width == r.Width && picked.Height == r.Height)
-        {
-            _settings = _settings with
-            {
-                CustomSizePlaces = RegionPlacement.RememberRecorded(_settings.CustomSizePlaces,
-                    new CustomSizePlace(picked, new SavedPosition(monitor.DeviceName, r.Left, r.Top)), _settings.CustomSizes),
-            };
-            SaveSettings(); // now, so a crash during the recording keeps it
-        }
+        SaveSettings(); // now, so a crash during the recording keeps the custom size's place
     }
 
     private void StopRecording(string note)
@@ -432,8 +423,8 @@ internal sealed class ControlBarForm : PillBarWindow
         var monitor = _frame.Monitor;
         ToolStripMenuItem SizeItem(string text, PixelSize size, CustomSize? custom = null)
         {
-            // A custom size goes back to where its last recording started; otherwise the top-left stays.
-            var target = (custom is null ? null : RegionPlacement.LastRecorded(custom, _settings.CustomSizePlaces, Screens.All()))
+            // A custom size goes back to where the frame last was with it; otherwise the top-left stays.
+            var target = (custom is null ? null : RegionPlacement.LastPlace(custom, _settings.CustomSizePlaces, Screens.All()))
                 ?? (FrameAdjust.ApplyPreset(_frame.CaptureRegion, size, monitor.Bounds) is { } kept ? (kept, monitor) : null);
             var item = new ToolStripMenuItem(text) { Enabled = target is not null };
             if (target is { } t)
@@ -464,8 +455,32 @@ internal sealed class ControlBarForm : PillBarWindow
     {
         if (_frame.Locked)
             return;
+        RememberCustomSizePlace();
         _frame.SetRegion(region, monitor);
         _pickedSize = custom;
+    }
+
+    /// <summary>The custom size the frame has: the one last picked from the menu, or else the first of the frame's size.</summary>
+    private CustomSize? CurrentCustomSize()
+    {
+        var r = _frame.CaptureRegion;
+        bool Fits(CustomSize c) => c.Width == r.Width && c.Height == r.Height;
+        return _pickedSize is { } picked && Fits(picked) && _settings.CustomSizes.Contains(picked)
+            ? picked
+            : _settings.CustomSizes.FirstOrDefault(Fits);
+    }
+
+    /// <summary>Keeps where the frame is now as its custom size's place, for picking that size again.</summary>
+    private void RememberCustomSizePlace()
+    {
+        if (CurrentCustomSize() is not { } size)
+            return;
+        var r = _frame.CaptureRegion;
+        _settings = _settings with
+        {
+            CustomSizePlaces = RegionPlacement.Remember(_settings.CustomSizePlaces,
+                new CustomSizePlace(size, new SavedPosition(_frame.Monitor.DeviceName, r.Left, r.Top)), _settings.CustomSizes),
+        };
     }
 
     /// <summary>Opens the custom sizes dialog and saves what it ends with, however it is closed.</summary>
@@ -509,6 +524,7 @@ internal sealed class ControlBarForm : PillBarWindow
     {
         if (FrameAdjust.FitToWindow(window, monitor.Bounds) is { } region)
         {
+            RememberCustomSizePlace();
             _frame.SetRegion(region, monitor);
             _pickedSize = null;
         }
@@ -590,6 +606,7 @@ internal sealed class ControlBarForm : PillBarWindow
 
     private void SaveSettings()
     {
+        RememberCustomSizePlace();
         var r = _frame.CaptureRegion;
         // The window is larger than the bar to hold its shadow; keep where the bar itself is. A minimized
         // window sits far off the screen, so then keep where it was before.

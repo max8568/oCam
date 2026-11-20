@@ -26,10 +26,10 @@ public static class RegionPlacement
     }
 
     /// <summary>
-    /// Where a recording last started with this custom size, if its monitor still exists and it still fits
-    /// there. Each custom size has its own place, even two with the same width and height.
+    /// Where the frame last was with this custom size, if its monitor still exists and it still fits there.
+    /// Each custom size has its own place, even two with the same width and height.
     /// </summary>
-    public static (PixelRect Region, MonitorInfo Monitor)? LastRecorded(CustomSize size, IReadOnlyList<CustomSizePlace> places, IReadOnlyList<MonitorInfo> monitors)
+    public static (PixelRect Region, MonitorInfo Monitor)? LastPlace(CustomSize size, IReadOnlyList<CustomSizePlace> places, IReadOnlyList<MonitorInfo> monitors)
     {
         var place = places.FirstOrDefault(p => p.Size == size);
         var monitor = monitors.FirstOrDefault(m => m.DeviceName == place?.Position.DeviceName);
@@ -37,9 +37,9 @@ public static class RegionPlacement
     }
 
     /// <summary>
-    /// The places with <paramref name="recorded"/> replacing its custom size's place. Places of sizes no
-    /// longer in <paramref name="customs"/> are dropped, and so is <paramref name="recorded"/> if its size is.
+    /// The places with <paramref name="place"/> replacing its custom size's place. Places of sizes no
+    /// longer in <paramref name="customs"/> are dropped.
     /// </summary>
-    public static IReadOnlyList<CustomSizePlace> RememberRecorded(IReadOnlyList<CustomSizePlace> places, CustomSizePlace recorded, IReadOnlyList<CustomSize> customs) =>
-        places.Where(p => p.Size != recorded.Size).Append(recorded).Where(p => customs.Contains(p.Size)).ToArray();
+    public static IReadOnlyList<CustomSizePlace> Remember(IReadOnlyList<CustomSizePlace> places, CustomSizePlace place, IReadOnlyList<CustomSize> customs) =>
+        places.Where(p => p.Size != place.Size).Append(place).Where(p => customs.Contains(p.Size)).ToArray();
 }

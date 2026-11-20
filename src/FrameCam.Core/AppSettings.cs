@@ -13,7 +13,7 @@ public sealed record SavedRegion(string DeviceName, int Left, int Top, int Width
 /// <summary>The control bar's top-left corner at exit, with the monitor it was on.</summary>
 public sealed record SavedPosition(string DeviceName, int Left, int Top);
 
-/// <summary>A custom size's top-left corner when a recording last started with it, with the monitor it was on.</summary>
+/// <summary>A custom size's top-left corner when the frame last had that size, with the monitor it was on.</summary>
 public sealed record CustomSizePlace(CustomSize Size, SavedPosition Position)
 {
     public PixelRect Rect => new(Position.Left, Position.Top, Size.Width, Size.Height);
@@ -50,7 +50,7 @@ public sealed record AppSettings
     /// <summary>The user's own sizes for the size menu, in the order they were added.</summary>
     public IReadOnlyList<CustomSize> CustomSizes { get; init; } = [];
 
-    /// <summary>Where each custom size was when a recording last started with it; picking the size goes back there.</summary>
+    /// <summary>Where the frame last was with each custom size; picking the size goes back there.</summary>
     public IReadOnlyList<CustomSizePlace> CustomSizePlaces { get; init; } = [];
 }
 
