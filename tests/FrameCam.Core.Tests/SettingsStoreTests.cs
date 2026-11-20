@@ -52,6 +52,33 @@ public class SettingsStoreTests
     }
 
     [Fact]
+    public void Last_recorded_places_load_back()
+    {
+        string path = NewPath();
+        CustomSizePlace[] places = [new(new CustomSize("直播", 800, 600), new SavedPosition(@"\\.\DISPLAY1", 10, 20))];
+        SettingsStore.Save(path, new AppSettings { CustomSizePlaces = places });
+        var (loaded, error) = SettingsStore.Load(path);
+        Assert.Null(error);
+        Assert.Equal(places, loaded.CustomSizePlaces);
+    }
+
+    [Fact]
+    public void Broken_last_recorded_places_from_a_hand_edit_are_dropped()
+    {
+        var (settings, error) = SettingsStore.Load(WriteFile(
+            """
+            { "CustomSizePlaces": [
+                null,
+                { "Size": null, "Position": { "DeviceName": "D", "Left": 0, "Top": 0 } },
+                { "Size": { "Label": "x", "Width": 800, "Height": 600 }, "Position": null }
+            ] }
+            """));
+        Assert.Null(error);
+        Assert.Empty(settings.CustomSizePlaces);
+        Assert.Empty(SettingsStore.Load(WriteFile("""{ "CustomSizePlaces": null }""")).Settings.CustomSizePlaces);
+    }
+
+    [Fact]
     public void Invalid_custom_sizes_from_a_hand_edit_are_dropped()
     {
         var (settings, error) = SettingsStore.Load(WriteFile(

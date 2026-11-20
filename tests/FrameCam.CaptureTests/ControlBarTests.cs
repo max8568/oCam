@@ -720,6 +720,47 @@ public class ControlBarTests
     });
 
     [Fact]
+    public void Each_custom_size_goes_back_to_where_it_was_last_recorded() => Sta.Run(async () =>
+    {
+        const string Live = "直播（800 × 600）", Lesson = "教學（800 × 600）";
+        var bar = new ControlBarForm(NewSettingsFile(new CustomSize("直播", 800, 600), new CustomSize("教學", 800, 600)));
+        try
+        {
+            bar.Show();
+            await Task.Delay(300);
+            void Pick(string text)
+            {
+                using var menu = bar.BuildSizeMenu();
+                menu.Items.Cast<ToolStripItem>().Single(i => i.Text == text).PerformClick();
+            }
+            async Task<PixelRect> Record()
+            {
+                var region = bar.Frame.CaptureRegion;
+                bar.ToggleRecording();
+                await WaitFor(() => bar.Look.Recording);
+                bar.ToggleRecording();
+                await WaitFor(() => !bar.Look.Recording);
+                return region;
+            }
+            Pick(Live);                     // keeps the centered top-left
+            var live = await Record();
+            Pick("整個螢幕");                // the top-left moves to the monitor's corner
+            Pick(Lesson);
+            var lesson = await Record();
+            Assert.NotEqual(live, lesson);
+
+            Pick(Live);
+            Assert.Equal(live, bar.Frame.CaptureRegion);
+            Pick(Lesson);
+            Assert.Equal(lesson, bar.Frame.CaptureRegion);
+        }
+        finally
+        {
+            bar.Close();
+        }
+    });
+
+    [Fact]
     public void Custom_size_larger_than_the_screen_cannot_be_picked() => Sta.Run(async () =>
     {
         var bar = new ControlBarForm(NewSettingsFile(new CustomSize("太大", 8000, 4000)));

@@ -37,6 +37,9 @@ internal sealed class ControlBarForm : PillBarWindow
     private bool _screenshotHotkeyFailed;
     private bool _pickHotkeyFailed;
     private bool _picking;
+
+    /// <summary>The custom size last picked from the size menu; a recording started at its size saves its place.</summary>
+    private CustomSize? _pickedSize;
     private bool _minimized;
 
     /// <param name="oldSettingsPath">Read when <paramref name="settingsPath"/> does not exist yet; saving always goes to <paramref name="settingsPath"/>.</param>
@@ -240,6 +243,16 @@ internal sealed class ControlBarForm : PillBarWindow
         SetEnabled(BarItem.Pick, false);
         SetEnabled(BarItem.Minimize, false);
         SetStatus(_recordingNote.Length == 0 ? "準備錄影…" : $"準備錄影…（{_recordingNote}）");
+        var r = _frame.CaptureRegion;
+        if (_pickedSize is { } picked && picked.Width == r.Width && picked.Height == r.Height)
+        {
+            _settings = _settings with
+            {
+                CustomSizePlaces = RegionPlacement.RememberRecorded(_settings.CustomSizePlaces,
+                    new CustomSizePlace(picked, new SavedPosition(monitor.DeviceName, r.Left, r.Top)), _settings.CustomSizes),
+            };
+            SaveSettings(); // now, so a crash during the recording keeps it
+        }
     }
 
     private void StopRecording(string note)
@@ -417,12 +430,14 @@ internal sealed class ControlBarForm : PillBarWindow
     {
         var menu = new LightMenu();
         var monitor = _frame.Monitor;
-        ToolStripMenuItem SizeItem(string text, PixelSize size)
+        ToolStripMenuItem SizeItem(string text, PixelSize size, CustomSize? custom = null)
         {
-            var target = FrameAdjust.ApplyPreset(_frame.CaptureRegion, size, monitor.Bounds);
+            // A custom size goes back to where its last recording started; otherwise the top-left stays.
+            var target = (custom is null ? null : RegionPlacement.LastRecorded(custom, _settings.CustomSizePlaces, Screens.All()))
+                ?? (FrameAdjust.ApplyPreset(_frame.CaptureRegion, size, monitor.Bounds) is { } kept ? (kept, monitor) : null);
             var item = new ToolStripMenuItem(text) { Enabled = target is not null };
-            if (target is { } region)
-                item.Click += (_, _) => SetRegionUnlessRecording(region, monitor);
+            if (target is { } t)
+                item.Click += (_, _) => SetRegionUnlessRecording(t.Region, t.Monitor, custom);
             return item;
         }
 
@@ -435,7 +450,7 @@ internal sealed class ControlBarForm : PillBarWindow
         if (_settings.CustomSizes.Count > 0)
         {
             foreach (var custom in _settings.CustomSizes)
-                menu.Items.Add(SizeItem(custom.MenuText, custom.Size));
+                menu.Items.Add(SizeItem(custom.MenuText, custom.Size, custom));
             menu.Items.Add(new ToolStripSeparator());
         }
         var manage = new ToolStripMenuItem("自訂尺寸…");
@@ -445,10 +460,12 @@ internal sealed class ControlBarForm : PillBarWindow
     }
 
     /// <summary>The menu may have opened before a recording started with the hotkey; the region stays put while recording.</summary>
-    private void SetRegionUnlessRecording(PixelRect region, MonitorInfo monitor)
+    private void SetRegionUnlessRecording(PixelRect region, MonitorInfo monitor, CustomSize? custom = null)
     {
-        if (!_frame.Locked)
-            _frame.SetRegion(region, monitor);
+        if (_frame.Locked)
+            return;
+        _frame.SetRegion(region, monitor);
+        _pickedSize = custom;
     }
 
     /// <summary>Opens the custom sizes dialog and saves what it ends with, however it is closed.</summary>
@@ -491,7 +508,10 @@ internal sealed class ControlBarForm : PillBarWindow
     private void FitFrameTo(PixelRect window, MonitorInfo monitor)
     {
         if (FrameAdjust.FitToWindow(window, monitor.Bounds) is { } region)
+        {
             _frame.SetRegion(region, monitor);
+            _pickedSize = null;
+        }
         else
             FlashStatus($"這個視窗太小，至少要 {FrameGeometry.MinSize}×{FrameGeometry.MinSize}");
     }

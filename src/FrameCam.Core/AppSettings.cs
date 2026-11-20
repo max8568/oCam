@@ -13,6 +13,12 @@ public sealed record SavedRegion(string DeviceName, int Left, int Top, int Width
 /// <summary>The control bar's top-left corner at exit, with the monitor it was on.</summary>
 public sealed record SavedPosition(string DeviceName, int Left, int Top);
 
+/// <summary>A custom size's top-left corner when a recording last started with it, with the monitor it was on.</summary>
+public sealed record CustomSizePlace(CustomSize Size, SavedPosition Position)
+{
+    public PixelRect Rect => new(Position.Left, Position.Top, Size.Width, Size.Height);
+}
+
 /// <summary>Everything stored in settings.json (spec 8.5). Hotkeys are text such as "F2" or "Ctrl+Shift+R".</summary>
 public sealed record AppSettings
 {
@@ -43,6 +49,9 @@ public sealed record AppSettings
 
     /// <summary>The user's own sizes for the size menu, in the order they were added.</summary>
     public IReadOnlyList<CustomSize> CustomSizes { get; init; } = [];
+
+    /// <summary>Where each custom size was when a recording last started with it; picking the size goes back there.</summary>
+    public IReadOnlyList<CustomSizePlace> CustomSizePlaces { get; init; } = [];
 }
 
 public static class SettingsStore
@@ -128,7 +137,18 @@ public static class SettingsStore
             PickHotkey = string.IsNullOrWhiteSpace(s.PickHotkey) ? defaults.PickHotkey : s.PickHotkey,
             FramesPerSecond = s.FramesPerSecond is 30 or 60 ? s.FramesPerSecond : defaults.FramesPerSecond,
             CustomSizes = ValidCustomSizes(s.CustomSizes),
+            CustomSizePlaces = ValidPlaces(s.CustomSizePlaces),
         };
+    }
+
+    /// <summary>Drops entries a hand edit broke. No entries gives the shared empty list.</summary>
+    private static IReadOnlyList<CustomSizePlace> ValidPlaces(IReadOnlyList<CustomSizePlace?>? places)
+    {
+        var valid = (places ?? [])
+            .Where(p => p is { Size: not null, Position.DeviceName: not null })
+            .Select(p => p! with { Size = p.Size with { Label = (p.Size.Label ?? "").Trim() } })
+            .ToArray();
+        return valid.Length == 0 ? [] : valid;
     }
 
     /// <summary>Drops entries a hand edit broke and keeps the first MaxCount. No entries gives the shared empty list.</summary>

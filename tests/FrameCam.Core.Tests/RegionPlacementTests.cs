@@ -38,4 +38,44 @@ public class RegionPlacementTests
     public void Odd_saved_size_is_kept() =>
         Assert.Equal(new PixelRect(100, 100, 641, 361),
             RegionPlacement.Restore(new SavedRegion(@"\\.\DISPLAY2", 100, 100, 641, 361), Both).Region);
+
+    private static readonly CustomSize Live = new("直播", 800, 600);
+    private static readonly CustomSize Lesson = new("教學", 800, 600); // same size, its own place
+    private static readonly CustomSize[] Customs = [Live, Lesson];
+
+    private static CustomSizePlace Place(CustomSize size, string device, int left, int top) => new(size, new SavedPosition(device, left, top));
+
+    [Fact]
+    public void Each_custom_size_goes_back_to_its_own_place()
+    {
+        CustomSizePlace[] places = [Place(Live, @"\\.\DISPLAY2", 5, 5), Place(Lesson, @"\\.\DISPLAY1", 2001, 33)];
+        Assert.Equal((new PixelRect(5, 5, 800, 600), Primary), RegionPlacement.LastRecorded(Live, places, Both));
+        Assert.Equal((new PixelRect(2001, 33, 800, 600), Second), RegionPlacement.LastRecorded(Lesson, places, Both));
+    }
+
+    [Fact]
+    public void Custom_size_never_recorded_has_no_place() =>
+        Assert.Null(RegionPlacement.LastRecorded(Lesson, [Place(Live, @"\\.\DISPLAY2", 5, 5)], Both));
+
+    [Fact]
+    public void Place_on_a_missing_monitor_is_not_used() =>
+        Assert.Null(RegionPlacement.LastRecorded(Live, [Place(Live, @"\\.\DISPLAY9", 5, 5)], Both));
+
+    [Fact]
+    public void Place_no_longer_inside_its_monitor_is_not_used() =>
+        Assert.Null(RegionPlacement.LastRecorded(Live, [Place(Live, @"\\.\DISPLAY1", 3500, 5)], Both));
+
+    [Fact]
+    public void Recording_replaces_only_that_custom_sizes_place()
+    {
+        var lesson = Place(Lesson, @"\\.\DISPLAY2", 5, 5);
+        var recorded = Place(Live, @"\\.\DISPLAY1", 2001, 33);
+        Assert.Equal([lesson, recorded],
+            RegionPlacement.RememberRecorded([Place(Live, @"\\.\DISPLAY2", 0, 0), lesson], recorded, Customs));
+    }
+
+    [Fact]
+    public void Places_of_deleted_or_changed_custom_sizes_are_dropped() =>
+        Assert.Empty(RegionPlacement.RememberRecorded([Place(new CustomSize("舊", 1024, 768), @"\\.\DISPLAY2", 5, 5)],
+            Place(new CustomSize("直播", 640, 360), @"\\.\DISPLAY2", 0, 0), Customs));
 }
